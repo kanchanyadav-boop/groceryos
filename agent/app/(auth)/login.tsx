@@ -71,7 +71,7 @@ export default function AgentLogin() {
       <View style={styles.inner}>
         {/* Logo */}
         <Text style={styles.logo}>🛵</Text>
-        <Text style={styles.title}>GroceryOS Delivery</Text>
+        <Text style={styles.title}>Green's Delivery</Text>
         <Text style={styles.subtitle}>Agent portal — login with your registered mobile number</Text>
 
         {step === "phone" ? (

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "GroceryOS Delivery",
-    "slug": "groceryos-agent",
+    "name": "Green's Delivery",
+    "slug": "greens-supermarket-agent",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -9,14 +9,14 @@
       "backgroundColor": "#060A12"
     },
     "ios": {
-      "bundleIdentifier": "com.groceryos.agent",
+      "bundleIdentifier": "com.greenssupermarket.agent",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to track your deliveries.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Background location is needed for live delivery tracking."
       }
     },
     "android": {
-      "package": "com.groceryos.agent",
+      "package": "com.greenssupermarket.agent",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -31,13 +31,12 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow GroceryOS Delivery to use your location for live tracking.",
-          "locationAlwaysAndWhenInUsePermission": "Allow GroceryOS Delivery to use your location in background."
+          "locationWhenInUsePermission": "Allow Green's Delivery to use your location for live tracking.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Green's Delivery to use your location in background."
         }
-      ],
-      "@react-native-firebase/app"
+      ]
     ],
-    "scheme": "groceryos-agent",
+    "scheme": "greens-supermarket-agent",
     "experiments": {
       "typedRoutes": true
     }
