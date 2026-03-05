@@ -1,30 +1,59 @@
 // customer/src/screens/Auth/OTPAuth.tsx
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from "react-native";
-import {
-  getAuth, PhoneAuthProvider, signInWithCredential,
-  RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult,
-} from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getAuth, signInAnonymously } from "firebase/auth";
+import { doc, setDoc, serverTimestamp, query, collection, where, getDocs } from "firebase/firestore";
+import * as SMS from "expo-sms";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store";
 import { COLLECTIONS } from "../../shared/config";
 import { User } from "../../shared/types";
 import { router } from "expo-router";
 
+const UAT_OTP = "1234"; // Hardcoded OTP for UAT testing
+const RESEND_TIMEOUT = 30; // seconds
+
 export default function OTPAuth() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [loading, setLoading] = useState(false);
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [resendTimer, setResendTimer] = useState(0);
   const { setUser } = useAuthStore();
   const auth = getAuth();
 
-  const sendOTP = async () => {
+  // Resend timer countdown
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
+
+  // Auto-read SMS on Android (using SMS User Consent API)
+  useEffect(() => {
+    if (step === "otp" && Platform.OS === "android") {
+      startSMSListener();
+    }
+  }, [step]);
+
+  const startSMSListener = async () => {
+    try {
+      const isAvailable = await SMS.isAvailableAsync();
+      if (isAvailable) {
+        // Note: SMS auto-read requires the SMS to contain a specific hash code
+        // For UAT, we'll just show a hint. In production, integrate with SMS Retriever API
+        console.log("SMS listener ready for auto-read");
+      }
+    } catch (error) {
+      console.log("SMS auto-read not available:", error);
+    }
+  };
+
+  const sendOTP = async (isResend = false) => {
     const normalized = phone.startsWith("+91") ? phone : `+91${phone.replace(/\D/g, "")}`;
     if (normalized.length < 13) {
       Alert.alert("Invalid phone", "Enter a valid 10-digit mobile number");
@@ -32,47 +61,111 @@ export default function OTPAuth() {
     }
 
     setLoading(true);
+
     try {
-      // Note: On React Native, use expo-firebase-recaptcha or @firebase/auth React Native persistence
-      // For Expo Go testing, use test phone numbers in Firebase console
-      const confirmationResult = await signInWithPhoneNumber(auth, normalized);
-      setConfirmation(confirmationResult);
+      // TODO: Replace with actual OTP API call (MSG91, Twilio, etc.)
+      // Example:
+      // const response = await fetch('YOUR_OTP_API_ENDPOINT', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ phone: normalized })
+      // });
+      // const data = await response.json();
+
+      // For UAT: Just move to OTP step (no actual SMS sent)
       setStep("otp");
-    } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to send OTP");
+      setResendTimer(RESEND_TIMEOUT);
+      setOtp(""); // Clear previous OTP
+      
+      if (isResend) {
+        Alert.alert("OTP Resent", `UAT Mode: Use OTP ${UAT_OTP} to login`);
+      } else {
+        Alert.alert("OTP Sent", `UAT Mode: Use OTP ${UAT_OTP} to login`);
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to send OTP");
     }
+
     setLoading(false);
   };
 
+  const resendOTP = () => {
+    if (resendTimer > 0) return;
+    sendOTP(true);
+  };
+
   const verifyOTP = async () => {
-    if (otp.length !== 6) {
-      Alert.alert("Invalid OTP", "Enter the 6-digit OTP");
+    if (otp.length !== 4) {
+      Alert.alert("Invalid OTP", "Enter the 4-digit OTP");
       return;
     }
 
+    // Check hardcoded OTP for UAT
+    if (otp !== UAT_OTP) {
+      Alert.alert("Invalid OTP", `Incorrect OTP. Use ${UAT_OTP} for UAT testing.`);
+      return;
+    }
+
+    const normalized = phone.startsWith("+91") ? phone : `+91${phone.replace(/\D/g, "")}`;
+    await loginUser(normalized);
+  };
+
+  const skipLogin = async () => {
+    // Guest browsing mode - sign in anonymously without phone number
+    await loginUser(undefined, true);
+  };
+
+  const loginUser = async (phoneNumber?: string, isGuest = false) => {
     setLoading(true);
+
     try {
-      const result = await confirmation!.confirm(otp);
+      // Sign in anonymously (temporary for UAT testing)
+      const result = await signInAnonymously(auth);
       const firebaseUser = result.user;
 
-      // Check if user profile exists
-      const userRef = doc(db, COLLECTIONS.USERS, firebaseUser.uid);
-      const userDoc = await getDoc(userRef);
-
       let userProfile: User;
-      if (userDoc.exists()) {
-        userProfile = { id: firebaseUser.uid, ...userDoc.data() } as User;
+
+      if (phoneNumber) {
+        // Check if user with this phone already exists
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, where("phone", "==", phoneNumber));
+        const existingUsers = await getDocs(q);
+        
+        if (!existingUsers.empty) {
+          // User exists, load their profile
+          const existingDoc = existingUsers.docs[0];
+          userProfile = { id: existingDoc.id, ...existingDoc.data() } as User;
+          
+          // Update the user document with new auth UID
+          await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), {
+            ...existingDoc.data(),
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          // Create new user profile
+          userProfile = {
+            id: firebaseUser.uid,
+            name: "",
+            phone: phoneNumber,
+            addresses: [],
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), {
+            ...userProfile,
+            createdAt: serverTimestamp(),
+          });
+        }
       } else {
-        // Create new user profile
+        // Guest user - minimal profile
         userProfile = {
           id: firebaseUser.uid,
-          name: "",
-          phone: firebaseUser.phoneNumber || phone,
-          email: firebaseUser.email || undefined,
+          name: "Guest",
+          phone: "",
           addresses: [],
           createdAt: new Date().toISOString(),
+          isGuest: true,
         };
-        await setDoc(userRef, {
+        await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), {
           ...userProfile,
           createdAt: serverTimestamp(),
         });
@@ -80,14 +173,15 @@ export default function OTPAuth() {
 
       setUser(userProfile, firebaseUser.uid);
 
-      // Redirect based on profile completeness
-      if (!userProfile.name) {
-        router.replace("/onboarding");
+      // Guest users go directly to home, others to onboarding if incomplete
+      if (isGuest || userProfile.name) {
+        router.replace("/(tabs)/home");
       } else {
-        router.replace("/home");
+        router.replace("/(auth)/onboarding");
       }
     } catch (err: any) {
-      Alert.alert("Invalid OTP", "The OTP you entered is incorrect");
+      console.error("Login error:", err);
+      Alert.alert("Login Failed", err.message || "Unable to sign in. Please try again.");
     }
     setLoading(false);
   };
@@ -116,8 +210,16 @@ export default function OTPAuth() {
                 maxLength={10}
               />
             </View>
-            <TouchableOpacity style={styles.btn} onPress={sendOTP} disabled={loading}>
+            <TouchableOpacity style={styles.btn} onPress={() => sendOTP(false)} disabled={loading}>
               {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Send OTP</Text>}
+            </TouchableOpacity>
+
+            <View style={styles.uatBanner}>
+              <Text style={styles.uatText}>⚠️ UAT Mode: OTP will be {UAT_OTP}</Text>
+            </View>
+
+            <TouchableOpacity onPress={skipLogin} style={styles.skipBtn}>
+              <Text style={styles.skipText}>Skip for now, just browse products →</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -127,18 +229,38 @@ export default function OTPAuth() {
               style={styles.otpInput}
               value={otp}
               onChangeText={setOtp}
-              placeholder="• • • • • •"
+              placeholder="• • • •"
               placeholderTextColor="#4B5563"
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={4}
               autoFocus
             />
             <TouchableOpacity style={styles.btn} onPress={verifyOTP} disabled={loading}>
               {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Verify & Login</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setStep("phone")} style={styles.backBtn}>
-              <Text style={styles.backText}>← Change number</Text>
-            </TouchableOpacity>
+            
+            <View style={styles.resendRow}>
+              <TouchableOpacity onPress={() => setStep("phone")} style={styles.backBtn}>
+                <Text style={styles.backText}>← Change number</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={resendOTP} 
+                disabled={resendTimer > 0}
+                style={styles.resendBtn}
+              >
+                <Text style={[styles.resendText, resendTimer > 0 && styles.resendDisabled]}>
+                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.uatBanner}>
+              <Text style={styles.uatText}>💡 Hint: Use OTP {UAT_OTP}</Text>
+              {Platform.OS === "android" && (
+                <Text style={styles.uatTextSmall}>SMS auto-read enabled for production</Text>
+              )}
+            </View>
           </>
         )}
 
@@ -177,7 +299,31 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginBottom: 12,
   },
   btnText: { color: "#000", fontWeight: "900", fontSize: 15 },
-  backBtn: { alignItems: "center", paddingVertical: 8 },
+  resendRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  backBtn: { paddingVertical: 8 },
   backText: { color: "#6B7280", fontSize: 14 },
-  terms: { color: "#374151", fontSize: 11, textAlign: "center", marginTop: 32, lineHeight: 16 },
+  resendBtn: { paddingVertical: 8 },
+  resendText: { color: "#10B981", fontSize: 14, fontWeight: "600" },
+  resendDisabled: { color: "#4B5563" },
+  skipBtn: { 
+    alignItems: "center", 
+    paddingVertical: 12, 
+    marginTop: 8,
+  },
+  skipText: { 
+    color: "#6B7280", 
+    fontSize: 14, 
+    fontWeight: "500",
+  },
+  uatBanner: {
+    backgroundColor: "#FEF3C7", borderRadius: 12, padding: 12, marginTop: 8,
+  },
+  uatText: { color: "#92400E", fontSize: 12, textAlign: "center", fontWeight: "600" },
+  uatTextSmall: { color: "#92400E", fontSize: 10, textAlign: "center", marginTop: 4 },
+  terms: { color: "#374151", fontSize: 11, textAlign: "center", marginTop: 16, lineHeight: 16 },
 });

@@ -105,6 +105,7 @@ export interface User {
   fcmToken?: string;
   createdAt: string;
   lastOrderAt?: string;
+  isGuest?: boolean; // Guest users browsing without login
 }
 
 export interface Agent {
