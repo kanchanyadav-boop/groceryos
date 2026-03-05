@@ -11,7 +11,7 @@ import RefundManagement from "./pages/RefundManagement";
 import Billing from "./pages/Billing";
 import Dispatch from "./pages/Dispatch";
 import {
-  Tag, Package, ShoppingCart, RotateCcw, DollarSign,
+  Tag, Package, ShoppingCart, RotateCcw, IndianRupee,
   LayoutDashboard, LogOut, Truck
 } from "lucide-react";
 
@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { to: "/inventory", label: "Inventory",   icon: Package,         module: "inventory" },
   { to: "/dispatch",  label: "Dispatch",    icon: Truck,           module: "dispatch" },
   { to: "/refunds",   label: "Refunds",     icon: RotateCcw,       module: "refunds" },
-  { to: "/billing",   label: "Billing",     icon: DollarSign,      module: "billing" },
+  { to: "/billing",   label: "Billing",     icon: IndianRupee,     module: "billing" },
 ];
 
 function Sidebar() {
