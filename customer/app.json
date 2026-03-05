@@ -40,8 +40,7 @@
         {
           "locationWhenInUsePermission": "Allow Green's Supermarket to use your location for delivery."
         }
-      ],
-      "@react-native-firebase/app"
+      ]
     ],
     "scheme": "greens-supermarket",
     "experiments": {
