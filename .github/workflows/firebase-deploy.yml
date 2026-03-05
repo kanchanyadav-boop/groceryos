@@ -68,9 +68,17 @@ jobs:
         run: |
           firebase deploy --only storage --project groceryos-61a05
 
+      - name: Set Razorpay Config
+        run: |
+          firebase functions:config:set \
+            razorpay.key_id="rzp_test_RrTWQ4YTkNkbU5" \
+            razorpay.key_secret="L4con8FCTF4BOVNvdSiKk78u" \
+            razorpay.webhook_secret="test_webhook_secret" \
+            --project groceryos-61a05 || echo "Config already set or failed - continuing..."
+
       - name: Deploy Cloud Functions
         run: |
-          firebase deploy --only functions --project groceryos-61a05
+          firebase deploy --only functions --project groceryos-61a05 --force
 
       - name: Deploy Admin Hosting
         run: |
