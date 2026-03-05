@@ -32,10 +32,22 @@ export default function CartCheckout() {
   );
 
   const placeOrder = async () => {
+    // Check if user is logged in
     if (!user || !firebaseUid) {
-      Alert.alert("Not logged in", "Please log in to continue.");
+      Alert.alert(
+        "Login Required",
+        "Please login to place your order. Your cart will be saved.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Login", 
+            onPress: () => router.push("/(auth)/login")
+          },
+        ]
+      );
       return;
     }
+    
     if (!selectedAddress) {
       Alert.alert(
         "No address selected",
