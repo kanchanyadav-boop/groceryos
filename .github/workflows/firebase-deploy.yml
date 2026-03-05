@@ -38,6 +38,10 @@ jobs:
           cd admin
           npm install
 
+      - name: Copy shared folder to admin
+        run: |
+          cp -r shared admin/src/shared
+
       - name: Create UAT Environment File
         run: |
           cd admin
