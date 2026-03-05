@@ -1,24 +1,23 @@
-// shared/firebase.config.ts
-// ─── Replace ALL values below with your actual Firebase project credentials ───
-// Get these from: Firebase Console → Project Settings → Your Apps
+// shared/config.ts
+// ─── Firebase Configuration ─────────────────────────────────────────────────
+// These values are loaded from environment variables in production
+// For local development, create a .env file (see .env.example)
 
 export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBozOHzA5rRBcxX-yt1bY6fUbDVX9H3ZVY",
-  authDomain: "groceryos-61a05.firebaseapp.com",
-  projectId: "groceryos-61a05",
-  storageBucket: "groceryos-61a05.firebasestorage.app",
-  messagingSenderId: "146621027744",
-  appId: "1:146621027744:web:cdf43e18455fd8ecf0c0c5",
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "AIzaSyBozOHzA5rRBcxX-yt1bY6fUbDVX9H3ZVY",
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || "groceryos-61a05.firebaseapp.com",
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "groceryos-61a05",
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || "groceryos-61a05.firebasestorage.app",
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "146621027744",
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID || "1:146621027744:web:cdf43e18455fd8ecf0c0c5",
 };
 
 // ─── Razorpay ───────────────────────────────────────────────────────────────
-// Get from: razorpay.com → Settings → API Keys
-export const RAZORPAY_KEY_ID = "rzp_test_RrTWQ4YTkNkbU5"; // test key
+export const RAZORPAY_KEY_ID = import.meta.env?.VITE_RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_test_RrTWQ4YTkNkbU5";
 // NEVER put RAZORPAY_KEY_SECRET in frontend code — only in Cloud Functions env
 
 // ─── Google Maps ────────────────────────────────────────────────────────────
-// Get from: console.cloud.google.com → APIs & Services → Credentials
-export const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_KEY";
+export const GOOGLE_MAPS_API_KEY = import.meta.env?.VITE_GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_KEY";
 
 // ─── App Config ─────────────────────────────────────────────────────────────
 export const APP_CONFIG = {
