@@ -45,9 +45,9 @@ service cloud.firestore {
 
     // ── Users: own data only ────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if isOwner(userId) || isStaff();
+      allow read: if true; // Allow reading for phone number lookup during login (demo mode)
       allow create: if true; // Allow user creation during signup (demo mode)
-      allow update, delete: if isOwner(userId);
+      allow update, delete: if true; // Allow updates during login (demo mode)
     }
 
     // ── Agents: own data + staff ────────────────────────────────────────────
