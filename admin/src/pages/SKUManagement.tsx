@@ -13,6 +13,7 @@ import Papa from "papaparse";
 import toast from "react-hot-toast";
 import { Product } from "../../shared/types";
 import { COLLECTIONS } from "../../shared/config";
+import { GROCERY_CATEGORIES, CATEGORY_LIST } from "../../shared/categories";
 import { Plus, Upload, Edit, Trash2, Search, X, Package } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -43,6 +44,7 @@ export default function SKUManagement() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,11 +82,13 @@ export default function SKUManagement() {
     setEditProduct(null);
     reset({});
     setImageFile(null);
+    setSelectedCategory("");
     setShowModal(true);
   };
 
   const openEdit = (p: Product) => {
     setEditProduct(p);
+    setSelectedCategory(p.category);
     reset({
       name: p.name, category: p.category, subcategory: p.subcategory,
       price: p.price, mrp: p.mrp, unit: p.unit,
@@ -318,11 +322,30 @@ export default function SKUManagement() {
 
                 <div>
                   <label className="text-gray-400 text-xs font-semibold uppercase mb-1 block">Category *</label>
-                  <input {...register("category")} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                  <select 
+                    {...register("category")} 
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Select Category</option>
+                    {CATEGORY_LIST.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs font-semibold uppercase mb-1 block">Subcategory</label>
-                  <input {...register("subcategory")} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                  <select 
+                    {...register("subcategory")} 
+                    disabled={!selectedCategory}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                  >
+                    <option value="">Select Subcategory</option>
+                    {selectedCategory && GROCERY_CATEGORIES[selectedCategory as keyof typeof GROCERY_CATEGORIES]?.map(sub => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
