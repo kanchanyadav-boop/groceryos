@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "GroceryOS Delivery",
+    "slug": "groceryos-agent",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#060A12"
+    },
+    "ios": {
+      "bundleIdentifier": "com.groceryos.agent",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to track your deliveries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Background location is needed for live delivery tracking."
+      }
+    },
+    "android": {
+      "package": "com.groceryos.agent",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow GroceryOS Delivery to use your location for live tracking.",
+          "locationAlwaysAndWhenInUsePermission": "Allow GroceryOS Delivery to use your location in background."
+        }
+      ],
+      "@react-native-firebase/app"
+    ],
+    "scheme": "groceryos-agent",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

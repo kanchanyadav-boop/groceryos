@@ -1,0 +1,108 @@
+// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ────────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && getUserRole() in ['admin', 'inventory_manager', 'dispatcher', 'billing', 'support'];
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ── Products: public read, staff write ──────────────────────────────────
+    match /products/{skuId} {
+      allow read: if true; // Public catalog
+      allow write: if isStaff() && getUserRole() in ['admin', 'inventory_manager'];
+    }
+
+    // ── Inventory: staff only ───────────────────────────────────────────────
+    match /inventory/{skuId} {
+      allow read: if isStaff();
+      allow write: if isStaff() && getUserRole() in ['admin', 'inventory_manager'];
+    }
+
+    // ── Orders: customer owns theirs, staff can read all ────────────────────
+    match /orders/{orderId} {
+      allow read: if isOwner(resource.data.userId) || isStaff() ||
+                     (isAuthenticated() && request.auth.uid == resource.data.agentId);
+      allow create: if isAuthenticated(); // Cloud Function handles actual creation
+      allow update: if isStaff() ||
+                       (isAuthenticated() && request.auth.uid == resource.data.agentId);
+    }
+
+    // ── Users: own data only ────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      allow read: if isStaff(); // Staff can view customer details
+    }
+
+    // ── Agents: own data + staff ────────────────────────────────────────────
+    match /agents/{agentId} {
+      allow read: if isStaff() || isOwner(agentId) || isAuthenticated(); // Customers need to see agent location
+      allow write: if isOwner(agentId) || isAdmin();
+      // Restrict location update to agent themselves
+      allow update: if isOwner(agentId) &&
+                       request.resource.data.keys().hasOnly(['location', 'locationUpdatedAt', 'status', 'activeOrderId', 'fcmToken']);
+    }
+
+    // ── Payments: own + billing staff ───────────────────────────────────────
+    match /payments/{paymentId} {
+      allow read: if isOwner(resource.data.userId) ||
+                     (isStaff() && getUserRole() in ['admin', 'billing']);
+      allow write: if false; // Cloud Functions only
+    }
+
+    // ── Refunds: own + billing staff ────────────────────────────────────────
+    match /refunds/{refundId} {
+      allow read: if isOwner(resource.data.userId) ||
+                     (isStaff() && getUserRole() in ['admin', 'billing']);
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isStaff() && getUserRole() in ['admin', 'billing'];
+    }
+
+    // ── Staff: admin only ───────────────────────────────────────────────────
+    match /staff/{staffId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ── Categories: public read, admin write ────────────────────────────────
+    match /categories/{catId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Delivery slots: authenticated read, admin write ─────────────────────
+    match /deliverySlots/{date} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ── Inventory logs: staff read ──────────────────────────────────────────
+    match /inventoryLogs/{logId} {
+      allow read: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+
+    // ── Chats: participants only ────────────────────────────────────────────
+    match /chats/{orderId}/messages/{msgId} {
+      allow read, write: if isAuthenticated(); // Restrict to order participants in production
+    }
+  }
+}
