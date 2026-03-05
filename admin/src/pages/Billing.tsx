@@ -85,7 +85,7 @@ export default function Billing() {
 
     pdf.setFontSize(18);
     pdf.setFont("helvetica", "bold");
-    pdf.text("GroceryOS — Sales Report", 14, 20);
+    pdf.text("Green's Supermarket — Sales Report", 14, 20);
 
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "normal");
@@ -130,7 +130,7 @@ export default function Billing() {
       styles: { fontSize: 8 },
     });
 
-    pdf.save(`GroceryOS_Report_${range}_${format(new Date(), "yyyyMMdd")}.pdf`);
+    pdf.save(`Greens_Supermarket_Report_${range}_${format(new Date(), "yyyyMMdd")}.pdf`);
     toast.success("PDF report downloaded");
   };
 

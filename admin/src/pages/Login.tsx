@@ -35,7 +35,7 @@ export default function Login() {
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/40 rounded-xl flex items-center justify-center text-xl">🛒</div>
           <div>
-            <h1 className="text-white font-black text-xl">GroceryOS Admin</h1>
+            <h1 className="text-white font-black text-xl">Green's Supermarket Admin</h1>
             <p className="text-gray-500 text-xs">Staff portal</p>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function Login() {
             <input
               {...register("email")}
               type="email"
-              placeholder="staff@groceryos.com"
+              placeholder="staff@greenssupermarket.com"
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 text-sm"
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}

@@ -35,7 +35,7 @@ function Sidebar() {
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-emerald-500/20 border border-emerald-500/30 rounded-lg flex items-center justify-center text-base">🛒</div>
           <div>
-            <div className="text-white font-black text-sm">GroceryOS</div>
+            <div className="text-white font-black text-sm">Green's Supermarket</div>
             <div className="text-gray-600 text-xs capitalize">{role}</div>
           </div>
         </div>
