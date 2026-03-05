@@ -76,7 +76,7 @@ export default function CartCheckout() {
       // Uncomment after installing react-native-razorpay:
       /*
       const rzpOptions = {
-        description: "GroceryOS Order",
+        description: "Green's Supermarket Order",
         currency: "INR",
         key: RAZORPAY_KEY_ID,
         amount: totalAmount * 100,

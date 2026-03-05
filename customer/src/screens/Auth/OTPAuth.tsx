@@ -96,7 +96,7 @@ export default function OTPAuth() {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <View style={styles.inner}>
         <Text style={styles.logo}>🛒</Text>
-        <Text style={styles.title}>GroceryOS</Text>
+        <Text style={styles.title}>Green's Supermarket</Text>
         <Text style={styles.subtitle}>Fresh groceries delivered to your door</Text>
 
         {step === "phone" ? (

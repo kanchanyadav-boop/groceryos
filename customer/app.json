@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "GroceryOS",
-    "slug": "groceryos-customer",
+    "name": "Green's Supermarket",
+    "slug": "greens-supermarket-customer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.groceryos.customer",
+      "bundleIdentifier": "com.greenssupermarket.customer",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to deliver groceries to you."
       }
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#060A12"
       },
-      "package": "com.groceryos.customer",
+      "package": "com.greenssupermarket.customer",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -38,12 +38,12 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow GroceryOS to use your location for delivery."
+          "locationWhenInUsePermission": "Allow Green's Supermarket to use your location for delivery."
         }
       ],
       "@react-native-firebase/app"
     ],
-    "scheme": "groceryos",
+    "scheme": "greens-supermarket",
     "experiments": {
       "typedRoutes": true
     }

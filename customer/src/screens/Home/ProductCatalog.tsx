@@ -176,7 +176,7 @@ export default function ProductCatalog() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>GroceryOS</Text>
+          <Text style={styles.headerTitle}>Green's Supermarket</Text>
           <Text style={styles.headerSubtitle}>📍 Delivering to your area</Text>
         </View>
         <TouchableOpacity style={styles.cartBtn} onPress={() => router.push("/cart")}>
