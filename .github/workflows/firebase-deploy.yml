@@ -40,7 +40,7 @@ jobs:
 
       - name: Copy shared folder to admin
         run: |
-          cp -r shared admin/src/shared
+          cp -r shared admin/shared
 
       - name: Create UAT Environment File
         run: |
