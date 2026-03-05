@@ -62,7 +62,7 @@ jobs:
 
       - name: Deploy Firestore Rules & Indexes
         run: |
-          firebase deploy --only firestore:rules,firestore:indexes,storage --project groceryos-61a05
+          firebase deploy --only firestore:rules,firestore:indexes --project groceryos-61a05
 
       - name: Deploy Cloud Functions
         run: |
