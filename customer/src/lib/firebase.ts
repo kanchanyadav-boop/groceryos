@@ -4,7 +4,7 @@ import { getAuth, initializeAuth, getReactNativePersistence } from "firebase/aut
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FIREBASE_CONFIG } from "../../../shared/config";
+import { FIREBASE_CONFIG } from "../shared/config";
 
 // Prevent re-initialization in Expo hot reload
 const app = getApps().length === 0
