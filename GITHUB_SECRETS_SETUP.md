@@ -1,45 +1,45 @@
-# GitHub Secrets Setup
+# GitHub Secrets Setup for UAT
 
-## Required GitHub Secrets
+## Single Secret Approach (Recommended)
 
 Go to: https://github.com/kanchanyadav-boop/groceryos/settings/secrets/actions
 
-Click "New repository secret" for each of the following:
+### Required Secrets
 
-### Firebase Configuration
+#### 1. ENV_FILE_UAT (UAT Environment Variables)
 
-1. **FIREBASE_API_KEY**
-   - Value: `AIzaSyBozOHzA5rRBcxX-yt1bY6fUbDVX9H3ZVY`
+Click "New repository secret":
+- **Name:** `ENV_FILE_UAT`
+- **Value:** Copy the entire content from `.env.uat` file:
 
-2. **FIREBASE_AUTH_DOMAIN**
-   - Value: `groceryos-61a05.firebaseapp.com`
+```
+VITE_FIREBASE_API_KEY=AIzaSyBozOHzA5rRBcxX-yt1bY6fUbDVX9H3ZVY
+VITE_FIREBASE_AUTH_DOMAIN=groceryos-61a05.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=groceryos-61a05
+VITE_FIREBASE_STORAGE_BUCKET=groceryos-61a05.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=146621027744
+VITE_FIREBASE_APP_ID=1:146621027744:web:cdf43e18455fd8ecf0c0c5
+VITE_RAZORPAY_KEY_ID=rzp_test_RrTWQ4YTkNkbU5
+VITE_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_KEY
+VITE_ENVIRONMENT=uat
+```
 
-3. **FIREBASE_PROJECT_ID**
-   - Value: `groceryos-61a05`
+#### 2. FIREBASE_SERVICE_ACCOUNT (Already Added ✅)
 
-4. **FIREBASE_STORAGE_BUCKET**
-   - Value: `groceryos-61a05.firebasestorage.app`
+This is already configured for Firebase deployment.
 
-5. **FIREBASE_MESSAGING_SENDER_ID**
-   - Value: `146621027744`
+## Why Single Secret?
 
-6. **FIREBASE_APP_ID**
-   - Value: `1:146621027744:web:cdf43e18455fd8ecf0c0c5`
+✅ **Simpler**: Only 1 secret to manage instead of 8  
+✅ **Easier to update**: Edit one secret instead of many  
+✅ **Environment parity**: Same format as local `.env` files  
+✅ **Less error-prone**: Copy-paste entire file content  
 
-### Razorpay
+## For Production (Later)
 
-7. **RAZORPAY_KEY_ID**
-   - Value: `rzp_test_RrTWQ4YTkNkbU5`
-
-### Google Maps
-
-8. **GOOGLE_MAPS_API_KEY**
-   - Value: `YOUR_GOOGLE_MAPS_KEY` (update when you get it)
-
-### Firebase Service Account (Already Added ✅)
-
-9. **FIREBASE_SERVICE_ACCOUNT**
-   - Already configured
+When ready for production, create:
+- **Name:** `ENV_FILE_PROD`
+- **Value:** Content from `.env.production` with live Razorpay keys
 
 ## Why Use GitHub Secrets?
 

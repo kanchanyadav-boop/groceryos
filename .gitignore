@@ -16,6 +16,8 @@ GoogleService-Info.plist
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # Build outputs
 admin/dist/
