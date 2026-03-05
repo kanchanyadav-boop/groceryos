@@ -62,13 +62,34 @@ jobs:
 
       - name: Deploy Firestore Rules & Indexes (Skipped - needs permissions)
         run: |
-          echo "Skipping Firestore rules deployment - deploy manually or fix service account permissions"
-          echo "See FIX_SERVICE_ACCOUNT_PERMISSIONS.md for instructions"
+          echo "⚠️  Skipping Firestore rules deployment"
+          echo "Deploy manually: firebase deploy --only firestore:rules,firestore:indexes,storage"
+          echo "See FIX_SERVICE_ACCOUNT_PERMISSIONS.md"
 
-      - name: Deploy Cloud Functions
+      - name: Deploy Cloud Functions (Skipped - needs permissions)
         run: |
-          firebase deploy --only functions --project groceryos-61a05
+          echo "⚠️  Skipping Cloud Functions deployment"
+          echo "Deploy manually: firebase deploy --only functions"
+          echo "See FIX_SERVICE_ACCOUNT_PERMISSIONS.md"
 
-      - name: Deploy Admin Hosting
+      - name: Deploy Admin Hosting (Skipped - needs permissions)
         run: |
-          firebase deploy --only hosting --project groceryos-61a05
+          echo "⚠️  Skipping Hosting deployment"
+          echo "Deploy manually: firebase deploy --only hosting"
+          echo "See FIX_SERVICE_ACCOUNT_PERMISSIONS.md"
+          
+      - name: Deployment Summary
+        run: |
+          echo "✅ Admin Panel built successfully!"
+          echo "✅ Cloud Functions built successfully!"
+          echo ""
+          echo "⚠️  Manual deployment required due to service account permissions"
+          echo ""
+          echo "To deploy everything manually:"
+          echo "1. Fix service account permissions (see FIX_SERVICE_ACCOUNT_PERMISSIONS.md)"
+          echo "2. Run: firebase deploy --project groceryos-61a05"
+          echo ""
+          echo "Or deploy individually:"
+          echo "  firebase deploy --only firestore:rules,firestore:indexes"
+          echo "  firebase deploy --only functions"
+          echo "  firebase deploy --only hosting"
