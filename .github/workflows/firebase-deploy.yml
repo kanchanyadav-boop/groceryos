@@ -60,9 +60,10 @@ jobs:
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/gcloud-key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud-key.json" >> $GITHUB_ENV
 
-      - name: Deploy Firestore Rules & Indexes
+      - name: Deploy Firestore Rules & Indexes (Skipped - needs permissions)
         run: |
-          firebase deploy --only firestore:rules,firestore:indexes --project groceryos-61a05
+          echo "Skipping Firestore rules deployment - deploy manually or fix service account permissions"
+          echo "See FIX_SERVICE_ACCOUNT_PERMISSIONS.md for instructions"
 
       - name: Deploy Cloud Functions
         run: |
