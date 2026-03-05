@@ -13,7 +13,7 @@ export const FIREBASE_CONFIG = {
 
 // ─── Razorpay ───────────────────────────────────────────────────────────────
 // Get from: razorpay.com → Settings → API Keys
-export const RAZORPAY_KEY_ID = "rzp_test_XXXXXXXXXXXXXXXX"; // test key
+export const RAZORPAY_KEY_ID = "rzp_test_RrTWQ4YTkNkbU5"; // test key
 // NEVER put RAZORPAY_KEY_SECRET in frontend code — only in Cloud Functions env
 
 // ─── Google Maps ────────────────────────────────────────────────────────────

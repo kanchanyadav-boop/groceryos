@@ -1,0 +1,38 @@
+name: Setup Functions Config (Run Once)
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  setup:
+    name: Configure Cloud Functions Environment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Authenticate with Service Account
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/gcloud-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud-key.json
+
+      - name: Set Razorpay Configuration
+        run: |
+          firebase functions:config:set \
+            razorpay.key_id="rzp_test_RrTWQ4YTkNkbU5" \
+            razorpay.key_secret="L4con8FCTF4BOVNvdSiKk78u" \
+            razorpay.webhook_secret="PLACEHOLDER_UPDATE_LATER" \
+            --project groceryos-61a05
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: $HOME/gcloud-key.json
+
+      - name: Display Configuration
+        run: |
+          echo "✅ Configuration set successfully!"
+          firebase functions:config:get --project groceryos-61a05
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: $HOME/gcloud-key.json
