@@ -7,8 +7,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../src/lib/firebase";
 import { useAuthStore } from "../src/store";
-import { COLLECTIONS } from "../shared/config";
-import { User } from "../shared/types";
+import { COLLECTIONS } from "../src/shared/config";
+import { User } from "../src/shared/types";
 import * as Notifications from "expo-notifications";
 
 // Configure how notifications are shown when app is in foreground

@@ -7,7 +7,7 @@ import {
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../src/lib/firebase";
 import { useAuthStore } from "../../src/store";
-import { COLLECTIONS } from "../../shared/config";
+import { COLLECTIONS } from "../../src/shared/config";
 import { router } from "expo-router";
 
 export default function Onboarding() {

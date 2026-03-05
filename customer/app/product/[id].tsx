@@ -7,8 +7,8 @@ import {
 } from "react-native";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../src/lib/firebase";
-import { COLLECTIONS } from "../../shared/config";
-import { Product } from "../../shared/types";
+import { COLLECTIONS } from "../../src/shared/config";
+import { Product } from "../../src/shared/types";
 import { useCartStore } from "../../src/store";
 import { router, useLocalSearchParams } from "expo-router";
 

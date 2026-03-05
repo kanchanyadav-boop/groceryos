@@ -6,8 +6,8 @@ import {
 import { collection, query, where, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { db } from "../../src/lib/firebase";
 import { useAuthStore } from "../../src/store";
-import { COLLECTIONS } from "../../shared/config";
-import { Order, OrderStatus } from "../../shared/types";
+import { COLLECTIONS } from "../../src/shared/config";
+import { Order, OrderStatus } from "../../src/shared/types";
 import { router } from "expo-router";
 import { format } from "date-fns";
 

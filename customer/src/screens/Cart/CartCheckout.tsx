@@ -5,7 +5,7 @@ import {
   ScrollView, Alert, ActivityIndicator, Image,
 } from "react-native";
 import { useCartStore, useAuthStore, useAppStore } from "../../store";
-import { APP_CONFIG, RAZORPAY_KEY_ID } from "../../../../shared/config";
+import { APP_CONFIG, RAZORPAY_KEY_ID } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { router } from "expo-router";
 import { format, addDays } from "date-fns";

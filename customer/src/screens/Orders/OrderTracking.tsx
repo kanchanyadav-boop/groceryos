@@ -5,8 +5,8 @@ import {
 } from "react-native";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
-import { COLLECTIONS } from "../../../shared/config";
-import { Order, Agent, OrderStatus } from "../../../shared/types";
+import { COLLECTIONS } from "../../shared/config";
+import { Order, Agent, OrderStatus } from "../../shared/types";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";

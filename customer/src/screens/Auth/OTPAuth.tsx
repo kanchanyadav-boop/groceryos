@@ -11,8 +11,8 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store";
-import { COLLECTIONS } from "../../../shared/config";
-import { User } from "../../../shared/types";
+import { COLLECTIONS } from "../../shared/config";
+import { User } from "../../shared/types";
 import { router } from "expo-router";
 
 export default function OTPAuth() {

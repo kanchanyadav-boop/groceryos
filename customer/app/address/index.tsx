@@ -11,8 +11,8 @@ import {
 import * as Location from "expo-location";
 import { db } from "../../src/lib/firebase";
 import { useAuthStore, useAppStore } from "../../src/store";
-import { COLLECTIONS } from "../../shared/config";
-import { Address } from "../../shared/types";
+import { COLLECTIONS } from "../../src/shared/config";
+import { Address } from "../../src/shared/types";
 import { router, useLocalSearchParams } from "expo-router";
 
 const LABEL_OPTIONS = ["Home", "Work", "Other"];

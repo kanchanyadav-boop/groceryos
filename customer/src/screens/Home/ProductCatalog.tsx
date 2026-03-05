@@ -9,8 +9,8 @@ import {
   getDocs, QueryDocumentSnapshot, onSnapshot,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
-import { COLLECTIONS } from "../../../shared/config";
-import { Product } from "../../../shared/types";
+import { COLLECTIONS } from "../../shared/config";
+import { Product } from "../../shared/types";
 import { useCartStore } from "../../store";
 import { router } from "expo-router";
 

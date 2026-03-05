@@ -8,7 +8,7 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../src/lib/firebase";
 import { useAuthStore } from "../../src/store";
-import { COLLECTIONS, APP_CONFIG } from "../../shared/config";
+import { COLLECTIONS, APP_CONFIG } from "../../src/shared/config";
 import { router } from "expo-router";
 
 export default function ProfileTab() {
