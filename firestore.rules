@@ -91,8 +91,8 @@ service cloud.firestore {
 
     // ── Inventory logs: staff read ──────────────────────────────────────────
     match /inventoryLogs/{logId} {
-      allow read: if isStaff();
-      allow create: if isStaff();
+      allow read: if isAuthenticated(); // Temporarily allow any authenticated user
+      allow create: if isAuthenticated(); // Temporarily allow any authenticated user
       allow update, delete: if false;
     }
 
