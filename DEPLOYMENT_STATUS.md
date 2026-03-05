@@ -7,33 +7,45 @@
 3. **GitHub CI/CD Pipeline** - Automated deployment configured
 4. **Environment Variables** - Using GitHub Secrets (ENV_FILE_UAT)
 5. **Code Repository** - All code pushed to GitHub
+6. **Service Account Permissions** - All required IAM roles granted
+7. **Firestore Rules & Indexes** - Successfully deployed
 
-## ⏳ Pending Actions
+## 🚨 BLOCKING ISSUE - Action Required
 
-### 1. Fix Service Account Permissions (5 minutes)
+### Upgrade to Firebase Blaze Plan (5 minutes)
 
-**Go to:** https://console.cloud.google.com/iam-admin/iam?project=groceryos-61a05
+**Current Status:** Project is on Spark (free) plan, but Cloud Functions require Blaze plan
 
-**Find service account:** `firebase-adminsdk-XXXXX@groceryos-61a05.iam.gserviceaccount.com`
+**Action Required:**
+1. Go to: https://console.firebase.google.com/project/groceryos-61a05/usage/details
+2. Click "Modify plan" or "Upgrade to Blaze"
+3. Add billing information (credit card required)
+4. Confirm upgrade
 
-**Add these roles:**
-- Firebase Rules Admin
-- Cloud Datastore Index Admin
-- Service Usage Admin
+**Cost Estimate for UAT:**
+- Cloud Functions: 2M invocations/month FREE, then $0.40 per million
+- Firestore: 50K reads/day FREE, 20K writes/day FREE
+- Storage: 5GB FREE, then $0.026/GB
+- **Expected UAT cost:** $0-5/month (well within free tier)
 
-**See:** `FIX_SERVICE_ACCOUNT_PERMISSIONS.md` for detailed instructions
+**Why Blaze is Required:**
+- Cloud Functions need external API access (Razorpay)
+- Cloud Build API required for function deployment
+- Artifact Registry for storing function containers
 
-### 2. Deploy Firestore Rules & Storage Manually (One-time)
+**After Upgrade:**
+- Deployment will automatically proceed via GitHub Actions
+- Or manually run: `firebase deploy --only functions --project groceryos-61a05`
 
-After fixing permissions OR do this manually now:
+## ⏳ Pending Actions (After Blaze Upgrade)
 
-```bash
-firebase login
-firebase use groceryos-61a05
-firebase deploy --only firestore:rules,firestore:indexes,storage
-```
+### 1. Enable Firebase Storage (Optional - 2 minutes)
 
-### 3. Secure API Key (5 minutes)
+**Go to:** https://console.firebase.google.com/project/groceryos-61a05/storage
+
+Click "Get Started" to initialize Firebase Storage (needed for product images)
+
+### 2. Secure API Key (5 minutes)
 
 **Go to:** https://console.cloud.google.com/apis/credentials?project=groceryos-61a05
 
@@ -45,7 +57,7 @@ firebase deploy --only firestore:rules,firestore:indexes,storage
 
 **See:** `SECURITY_SETUP.md` for detailed instructions
 
-### 4. Set Razorpay Webhook Secret (3 minutes)
+### 3. Set Razorpay Webhook Secret (3 minutes)
 
 **Option A: Via GitHub Actions**
 - Go to: https://github.com/kanchanyadav-boop/groceryos/actions
@@ -57,7 +69,7 @@ firebase functions:config:set razorpay.webhook_secret="YOUR_WEBHOOK_SECRET"
 firebase deploy --only functions
 ```
 
-### 5. Create First Admin User (5 minutes)
+### 4. Create First Admin User (5 minutes)
 
 **Step 1: Create Auth User**
 - Go to: https://console.firebase.google.com/project/groceryos-61a05/authentication/users
@@ -83,10 +95,10 @@ firebase deploy --only functions
 ## 🎯 Current Deployment Status
 
 ### What's Deployed:
-- ✅ Admin Panel: https://groceryos-61a05.web.app (after hosting deployment completes)
-- ✅ Cloud Functions: 8 functions deployed
-- ⏳ Firestore Rules: Needs manual deployment or permission fix
-- ⏳ Storage Rules: Needs manual deployment or permission fix
+- ✅ Firestore Rules & Indexes: Successfully deployed
+- ⏳ Cloud Functions: Blocked by Blaze plan requirement
+- ⏳ Admin Panel Hosting: Blocked by Blaze plan requirement
+- ⏳ Storage Rules: Firebase Storage not initialized yet
 
 ### What's Working:
 - ✅ GitHub Actions CI/CD pipeline
@@ -94,9 +106,12 @@ firebase deploy --only functions
 - ✅ Environment variable management via GitHub Secrets
 - ✅ TypeScript compilation
 - ✅ Admin panel build process
+- ✅ Service account permissions configured
+- ✅ Firestore database ready
 
 ### What Needs Attention:
-- ⚠️ Service account permissions (blocking rules deployment)
+- 🚨 **BLOCKING:** Upgrade to Blaze plan (required for Cloud Functions)
+- ⚠️ Firebase Storage initialization (optional, for product images)
 - ⚠️ API key restriction (security)
 - ⚠️ Admin user creation (to test login)
 - ⚠️ Razorpay webhook configuration
@@ -117,13 +132,14 @@ https://github.com/kanchanyadav-boop/groceryos/actions
 
 ## 🚀 To Complete Setup
 
-1. Fix service account permissions (5 min)
-2. Deploy rules manually once (2 min)
-3. Secure API key (5 min)
-4. Create admin user (5 min)
-5. Test login at https://groceryos-61a05.web.app
+1. **Upgrade to Blaze plan** (5 min) - REQUIRED
+2. Wait for automatic deployment (5-10 min) OR trigger manually
+3. Enable Firebase Storage (2 min) - Optional
+4. Secure API key (5 min)
+5. Create admin user (5 min)
+6. Test login at https://groceryos-61a05.web.app
 
-**Total time to complete:** ~20 minutes
+**Total time to complete:** ~25 minutes
 
 ## ✨ Success Criteria
 
