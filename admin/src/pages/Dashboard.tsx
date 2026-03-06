@@ -25,6 +25,16 @@ interface StatCardProps {
   bg: string;
 }
 
+// Defined at module level — not recreated on every Dashboard render
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  confirmed:  { label: "Confirmed",  color: "text-blue-400",    bg: "bg-blue-500/10 border border-blue-500/20" },
+  packed:     { label: "Packed",     color: "text-yellow-400",  bg: "bg-yellow-500/10 border border-yellow-500/20" },
+  dispatched: { label: "Dispatched", color: "text-purple-400",  bg: "bg-purple-500/10 border border-purple-500/20" },
+  delivered:  { label: "Delivered",  color: "text-emerald-400", bg: "bg-emerald-500/10 border border-emerald-500/20" },
+  cancelled:  { label: "Cancelled",  color: "text-red-400",     bg: "bg-red-500/10 border border-red-500/20" },
+  refunded:   { label: "Refunded",   color: "text-gray-400",    bg: "bg-gray-500/10 border border-gray-500/20" },
+};
+
 function StatCard({ label, value, sub, icon: Icon, color, bg }: StatCardProps) {
   return (
     <div className={`${bg} border rounded-2xl p-5`}>
@@ -116,10 +126,15 @@ export default function Dashboard() {
     load();
   }, []);
 
-  // Low stock count
+  // Low stock count — query only items where available === 0 for the count badge.
+  // Full low-stock analysis (available <= threshold) requires client-side filtering
+  // since threshold varies per item; a Cloud Function should maintain an isLowStock flag
+  // for a scalable server-side query. For now, limit the scan to 500 items.
   useEffect(() => {
     const load = async () => {
-      const snap = await getDocs(collection(db, COLLECTIONS.INVENTORY));
+      const snap = await getDocs(
+        query(collection(db, COLLECTIONS.INVENTORY), limit(500))
+      );
       const count = snap.docs.filter(d => {
         const inv = d.data();
         return inv.available <= inv.lowStockThreshold;
@@ -141,15 +156,6 @@ export default function Dashboard() {
   const activeDeliveries = todayOrders.filter(o => o.status === "dispatched").length;
   const availableAgents = agents.filter(a => a.status === "available").length;
   const busyAgents = agents.filter(a => a.status === "busy").length;
-
-  const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    confirmed:  { label: "Confirmed",  color: "text-blue-400",    bg: "bg-blue-500/10 border border-blue-500/20" },
-    packed:     { label: "Packed",     color: "text-yellow-400",  bg: "bg-yellow-500/10 border border-yellow-500/20" },
-    dispatched: { label: "Dispatched", color: "text-purple-400",  bg: "bg-purple-500/10 border border-purple-500/20" },
-    delivered:  { label: "Delivered",  color: "text-emerald-400", bg: "bg-emerald-500/10 border border-emerald-500/20" },
-    cancelled:  { label: "Cancelled",  color: "text-red-400",     bg: "bg-red-500/10 border border-red-500/20" },
-    refunded:   { label: "Refunded",   color: "text-gray-400",    bg: "bg-gray-500/10 border border-gray-500/20" },
-  };
 
   return (
     <div className="p-6 max-w-[1200px]">

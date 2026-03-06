@@ -7,22 +7,26 @@ import Dashboard from "./pages/Dashboard";
 import SKUManagement from "./pages/SKUManagement";
 import Inventory from "./pages/Inventory";
 import OrderManagement from "./pages/OrderManagement";
+import CreateOrder from "./pages/CreateOrder";
 import RefundManagement from "./pages/RefundManagement";
 import Billing from "./pages/Billing";
 import Dispatch from "./pages/Dispatch";
+import StoreManagement from "./pages/StoreManagement";
 import {
   Tag, Package, ShoppingCart, RotateCcw, IndianRupee,
-  LayoutDashboard, LogOut, Truck
+  LayoutDashboard, LogOut, Truck, Plus, Store
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/",          label: "Dashboard",   icon: LayoutDashboard, module: "orders" },
-  { to: "/orders",    label: "Orders",      icon: ShoppingCart,    module: "orders" },
-  { to: "/sku",       label: "Products",    icon: Tag,             module: "sku" },
-  { to: "/inventory", label: "Inventory",   icon: Package,         module: "inventory" },
-  { to: "/dispatch",  label: "Dispatch",    icon: Truck,           module: "dispatch" },
-  { to: "/refunds",   label: "Refunds",     icon: RotateCcw,       module: "refunds" },
-  { to: "/billing",   label: "Billing",     icon: IndianRupee,     module: "billing" },
+  { to: "/",             label: "Dashboard",     icon: LayoutDashboard, module: "orders" },
+  { to: "/orders",       label: "Orders",        icon: ShoppingCart,    module: "orders" },
+  { to: "/create-order", label: "Create Order",  icon: Plus,            module: "orders" },
+  { to: "/stores",       label: "Stores",        icon: Store,           module: "orders" },
+  { to: "/sku",          label: "Products",      icon: Tag,             module: "sku" },
+  { to: "/inventory",    label: "Inventory",     icon: Package,         module: "inventory" },
+  { to: "/dispatch",     label: "Dispatch",      icon: Truck,           module: "dispatch" },
+  { to: "/refunds",      label: "Refunds",       icon: RotateCcw,       module: "refunds" },
+  { to: "/billing",      label: "Billing",       icon: IndianRupee,     module: "billing" },
 ];
 
 function Sidebar() {
@@ -96,6 +100,8 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/orders" element={<OrderManagement />} />
+          <Route path="/create-order" element={<CreateOrder />} />
+          <Route path="/stores" element={<StoreManagement />} />
           <Route path="/sku" element={<SKUManagement />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/dispatch" element={<Dispatch />} />

@@ -8,11 +8,15 @@ import { db } from "../lib/firebase";
 import { Order, Agent } from "../../shared/types";
 import { COLLECTIONS } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../lib/firebase";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import {
   MapPin, Zap, Navigation, Phone, Star, Package, X, CheckCircle
 } from "lucide-react";
+
+// Initialized once at module level — not recreated on every function call
+const functions = getFunctions(app);
 
 const AGENT_STATUS_STYLES: Record<string, { label: string; color: string; dot: string }> = {
   available: { label: "Available", color: "text-emerald-400", dot: "bg-emerald-500" },
@@ -80,7 +84,7 @@ export default function Dispatch() {
   const autoAssign = async (orderId: string) => {
     setAutoAssigning(orderId);
     try {
-      const fn = httpsCallable(getFunctions(), "autoAssignAgent");
+      const fn = httpsCallable(functions, "autoAssignAgent");
       const result = await fn({ orderId }) as any;
       toast.success(`Auto-assigned to ${result.data.agentName}`);
     } catch (err: any) {

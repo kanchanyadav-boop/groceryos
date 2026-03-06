@@ -1,17 +1,18 @@
 // admin/src/pages/Inventory.tsx
-import { useState, useEffect } from "react";
-import { collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp, onSnapshot, addDoc } from "firebase/firestore";
+import { useState, useEffect, useRef } from "react";
+import { collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp, onSnapshot, addDoc, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
-import { COLLECTIONS } from "../../shared/config";
-import { InventoryItem, Product } from "../../shared/types";
-import { AlertTriangle, TrendingDown, Package, Save } from "lucide-react";
+import { COLLECTIONS } from "../../../shared/config";
+import { InventoryItem, Product, Store } from "../../../shared/types";
+import { AlertTriangle, TrendingDown, Package, Save, Store as StoreIcon } from "lucide-react";
 
 interface InventoryRow extends InventoryItem {
   productName: string;
   productCategory: string;
   productUnit: string;
+  storeName: string;
   editing?: boolean;
   newQty?: number;
 }
@@ -19,38 +20,67 @@ interface InventoryRow extends InventoryItem {
 export default function Inventory() {
   const { staffProfile } = useAuth();
   const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStore, setSelectedStore] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
 
+  // Stable refs — updated on data arrival, do NOT trigger re-subscription
+  const productMapRef = useRef<Record<string, Product>>({});
+  const storeMapRef = useRef<Record<string, string>>({});
+
+  // Fetch products once on mount — no real-time listener needed for enrichment
   useEffect(() => {
-    // Real-time inventory listener
-    const unsubscribe = onSnapshot(
-      query(collection(db, COLLECTIONS.INVENTORY), orderBy("updatedAt", "desc")),
-      async (snap) => {
-        // Fetch product names in parallel
-        const invItems = snap.docs.map(d => ({ skuId: d.id, ...d.data() } as InventoryItem));
+    getDocs(collection(db, COLLECTIONS.PRODUCTS)).then(snap => {
+      const map: Record<string, Product> = {};
+      snap.docs.forEach(d => { map[d.id] = { id: d.id, ...d.data() } as Product; });
+      productMapRef.current = map;
+    });
+  }, []);
 
-        // Get product details
-        const productSnap = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
-        const productMap: Record<string, Product> = {};
-        productSnap.docs.forEach(d => { productMap[d.id] = { id: d.id, ...d.data() } as Product; });
+  // Real-time store listener — updates dropdown state AND the stable ref
+  useEffect(() => {
+    return onSnapshot(query(collection(db, COLLECTIONS.STORES)), snap => {
+      const map: Record<string, string> = {};
+      const list = snap.docs.map(d => {
+        const s = { id: d.id, ...d.data() } as Store;
+        map[d.id] = s.name;
+        return s;
+      });
+      storeMapRef.current = map;
+      setStores(list);
+    });
+  }, []);
 
-        const enriched: InventoryRow[] = invItems.map(item => ({
+  // Real-time inventory listener — depends only on selectedStore (not on stores/products arrays)
+  useEffect(() => {
+    const inventoryQuery = selectedStore === "all"
+      ? query(collection(db, COLLECTIONS.INVENTORY), orderBy("updatedAt", "desc"))
+      : query(
+          collection(db, COLLECTIONS.INVENTORY),
+          where("storeId", "==", selectedStore),
+          orderBy("updatedAt", "desc")
+        );
+
+    return onSnapshot(inventoryQuery, snap => {
+      const enriched: InventoryRow[] = snap.docs.map(d => {
+        // Fix: spread data first so the doc ID always wins as skuId
+        const item = { ...d.data(), skuId: d.id } as InventoryItem;
+        return {
           ...item,
-          productName: productMap[item.skuId]?.name || item.skuId,
-          productCategory: productMap[item.skuId]?.category || "—",
-          productUnit: productMap[item.skuId]?.unit || "pcs",
+          productName: productMapRef.current[item.skuId]?.name || item.skuId,
+          productCategory: productMapRef.current[item.skuId]?.category || "—",
+          productUnit: productMapRef.current[item.skuId]?.unit || "pcs",
+          storeName: storeMapRef.current[item.storeId] || "Unknown Store",
           editing: false,
           newQty: item.quantity,
-        }));
-
-        setRows(enriched);
-        setLoading(false);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
+        };
+      });
+      setRows(enriched);
+      setLoading(false);
+    });
+  }, [selectedStore]);
 
   const updateQty = (skuId: string, val: number) => {
     setRows(prev => prev.map(r => r.skuId === skuId ? { ...r, newQty: val } : r));
@@ -110,6 +140,26 @@ export default function Inventory() {
         <p className="text-gray-500 text-sm mt-1">Real-time stock management · Updates sync instantly</p>
       </div>
 
+      {/* Store Filter */}
+      <div className="mb-6">
+        <label className="text-gray-400 text-xs font-bold uppercase block mb-2 flex items-center gap-2">
+          <StoreIcon size={14} />
+          Filter by Store
+        </label>
+        <select
+          value={selectedStore}
+          onChange={(e) => setSelectedStore(e.target.value)}
+          className="bg-gray-900 border border-gray-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-emerald-500 w-64"
+        >
+          <option value="all">All Stores</option>
+          {stores.map(store => (
+            <option key={store.id} value={store.id}>
+              {store.name} ({store.code})
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
@@ -144,7 +194,7 @@ export default function Inventory() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-800">
-              {["Product", "Category", "Unit", "In Stock", "Reserved", "Available", "Low Stock At", "Update Qty"].map(h => (
+              {["Product", "Store", "Category", "Unit", "In Stock", "Reserved", "Available", "Low Stock At", "Update Qty"].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
@@ -154,8 +204,9 @@ export default function Inventory() {
               const isLow = row.quantity > 0 && row.quantity <= row.lowStockThreshold;
               const isOut = row.quantity === 0;
               return (
-                <tr key={row.skuId} className={`border-b border-gray-800/50 ${i % 2 === 0 ? "" : "bg-gray-900/50"}`}>
+                <tr key={`${row.skuId}-${row.storeId}`} className={`border-b border-gray-800/50 ${i % 2 === 0 ? "" : "bg-gray-900/50"}`}>
                   <td className="px-4 py-3 text-white text-sm font-semibold">{row.productName}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{row.storeName}</td>
                   <td className="px-4 py-3 text-gray-500 text-sm">{row.productCategory}</td>
                   <td className="px-4 py-3 text-gray-500 text-sm">{row.productUnit}</td>
                   <td className="px-4 py-3">

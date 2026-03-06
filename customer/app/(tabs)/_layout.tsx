@@ -1,52 +1,89 @@
 // customer/app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAppStore } from "../../src/store";
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({
+  name,
+  focused,
+  badge,
+}: {
+  name: React.ComponentProps<typeof Ionicons>["name"];
+  focused: boolean;
+  badge?: number;
+}) {
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      <Ionicons name={name} size={22} color={focused ? "#2ECC71" : "#4E4E60"} />
+      {badge && badge > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 export default function TabsLayout() {
+  const { activeOrderCount } = useAppStore();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#0C1220",
-          borderTopColor: "#1C2A3E",
+          backgroundColor: "#16181F",
+          borderTopColor: "#262830",
           borderTopWidth: 1,
           height: 80,
           paddingBottom: 16,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: "#10B981",
-        tabBarInactiveTintColor: "#4B5563",
+        tabBarActiveTintColor: "#2ECC71",
+        tabBarInactiveTintColor: "#4E4E60",
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "Shop",
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} />,
+          title: "Home",
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "home" : "home-outline"} focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="reorder"
+        options={{
+          title: "Reorder",
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "refresh-circle" : "refresh-circle-outline"} focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="categories"
+        options={{
+          title: "Categories",
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "grid" : "grid-outline"} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
           title: "Orders",
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📦" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? "receipt" : "receipt-outline"}
+              focused={focused}
+              badge={activeOrderCount}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "person" : "person-outline"} focused={focused} />,
         }}
       />
     </Tabs>
@@ -54,7 +91,26 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  iconWrap: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: 8 },
-  iconWrapActive: { backgroundColor: "#10B98115" },
-  emoji: { fontSize: 20 },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    position: "relative",
+  },
+  iconWrapActive: { backgroundColor: "#2ECC7115" },
+  badge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: "#E05252",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
 });

@@ -44,6 +44,7 @@ export const COLLECTIONS = {
   PAYMENTS: "payments",
   REFUNDS: "refunds",
   STAFF: "staff",
+  STORES: "stores",
   CATEGORIES: "categories",
   DELIVERY_SLOTS: "deliverySlots",
   CHATS: "chats",

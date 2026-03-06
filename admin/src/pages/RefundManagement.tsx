@@ -1,6 +1,6 @@
 // admin/src/pages/RefundManagement.tsx
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, addDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, addDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
@@ -30,7 +30,7 @@ export default function RefundManagement() {
 
   useEffect(() => {
     const unsub = onSnapshot(
-      query(collection(db, COLLECTIONS.REFUNDS), orderBy("createdAt", "desc")),
+      query(collection(db, COLLECTIONS.REFUNDS), orderBy("createdAt", "desc"), limit(300)),
       snap => {
         setRefunds(snap.docs.map(d => ({ id: d.id, ...d.data() } as Refund)));
         setLoading(false);

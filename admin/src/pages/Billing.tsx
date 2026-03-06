@@ -69,14 +69,16 @@ export default function Billing() {
     return acc;
   }, {} as Record<string, number>);
 
-  // ── Daily chart data ───────────────────────────────────────────────────────
-  const dailyData = orders.reduce((acc, o) => {
-    const day = o.createdAt ? format(new Date(o.createdAt), "dd MMM") : "—";
-    const existing = acc.find(d => d.day === day);
-    if (existing) { existing.revenue += o.totalAmount; existing.orders += 1; }
-    else acc.push({ day, revenue: o.totalAmount, orders: 1 });
-    return acc;
-  }, [] as { day: string; revenue: number; orders: number }[]);
+  // ── Daily chart data (O(n) via Map, not O(n²) find-in-array) ──────────────
+  const dailyData = Object.values(
+    orders.reduce((acc, o) => {
+      const day = o.createdAt ? format(new Date(o.createdAt), "dd MMM") : "—";
+      if (!acc[day]) acc[day] = { day, revenue: 0, orders: 0 };
+      acc[day].revenue += o.totalAmount;
+      acc[day].orders += 1;
+      return acc;
+    }, {} as Record<string, { day: string; revenue: number; orders: number }>)
+  );
 
   // ── PDF Invoice Generator ──────────────────────────────────────────────────
   const generateReport = () => {

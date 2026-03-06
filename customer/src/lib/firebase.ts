@@ -11,12 +11,17 @@ const app = getApps().length === 0
   ? initializeApp(FIREBASE_CONFIG)
   : getApps()[0];
 
-// Use AsyncStorage persistence for React Native
-export const auth = getApps().length <= 1
-  ? initializeAuth(app, {
+// initializeAuth throws if called twice on the same app (e.g. Expo hot reload).
+// Fall back to getAuth() when Auth was already initialized for this app.
+export const auth = (() => {
+  try {
+    return initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
-    })
-  : getAuth(app);
+    });
+  } catch {
+    return getAuth(app);
+  }
+})();
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);

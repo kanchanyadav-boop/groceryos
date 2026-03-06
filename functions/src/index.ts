@@ -412,7 +412,41 @@ export const autoAssignAgent = functions.https.onCall(async (data, context) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 8. SET STAFF ROLE — set Firebase custom claims for role-based access
+// 8. SIGN IN WITH PHONE — issue a custom token for demo phone auth
+//    Called BEFORE the user has a Firebase Auth session, so no auth check here.
+//    Phone number is already validated by the OTP step on the client.
+// ═══════════════════════════════════════════════════════════════════════════════
+export const signInWithPhone = functions.https.onCall(async (data) => {
+  const { phone } = data;
+  if (!phone || typeof phone !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Phone number required");
+  }
+
+  // Derive a stable UID from the phone number (same format used in OTPAuth.tsx)
+  const uid = phone.replace(/\+/g, "").replace(/\s/g, ""); // e.g. "919876543210"
+
+  // Ensure the user document exists in Firestore
+  const userRef = db.collection("users").doc(uid);
+  const userDoc = await userRef.get();
+  if (!userDoc.exists) {
+    await userRef.set({
+      id: uid,
+      phone,
+      name: "",
+      addresses: [],
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } else {
+    await userRef.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
+  }
+
+  // Create a Firebase custom token — this gives the client a real Auth session
+  const customToken = await admin.auth().createCustomToken(uid);
+  return { customToken, userId: uid, isNewUser: !userDoc.exists };
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 9. SET STAFF ROLE — set Firebase custom claims for role-based access
 // ═══════════════════════════════════════════════════════════════════════════════
 export const setStaffRole = functions.https.onCall(async (data, context) => {
   // Only admins can set roles

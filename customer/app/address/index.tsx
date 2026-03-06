@@ -283,7 +283,7 @@ export default function AddressScreen() {
             {/* GPS Detect */}
             <TouchableOpacity style={styles.gpsBtn} onPress={detectLocation} disabled={detectingLocation}>
               {detectingLocation
-                ? <ActivityIndicator color="#10B981" size="small" />
+                ? <ActivityIndicator color="#2ECC71" size="small" />
                 : <Text style={styles.gpsBtnText}>📡 Use Current Location</Text>
               }
             </TouchableOpacity>
@@ -297,7 +297,7 @@ export default function AddressScreen() {
               value={line1}
               onChangeText={setLine1}
               placeholder="House / Flat no., Street name"
-              placeholderTextColor="#4B5563"
+              placeholderTextColor="#4E4E60"
             />
 
             <Text style={styles.fieldLabel}>Address Line 2</Text>
@@ -306,7 +306,7 @@ export default function AddressScreen() {
               value={line2}
               onChangeText={setLine2}
               placeholder="Landmark, Society name (optional)"
-              placeholderTextColor="#4B5563"
+              placeholderTextColor="#4E4E60"
             />
 
             <View style={styles.row}>
@@ -317,7 +317,7 @@ export default function AddressScreen() {
                   value={city}
                   onChangeText={setCity}
                   placeholder="Mumbai"
-                  placeholderTextColor="#4B5563"
+                  placeholderTextColor="#4E4E60"
                 />
               </View>
               <View style={styles.rowHalf}>
@@ -327,7 +327,7 @@ export default function AddressScreen() {
                   value={pincode}
                   onChangeText={setPincode}
                   placeholder="400001"
-                  placeholderTextColor="#4B5563"
+                  placeholderTextColor="#4E4E60"
                   keyboardType="number-pad"
                   maxLength={6}
                 />
@@ -352,59 +352,59 @@ export default function AddressScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#060A12" },
+  container: { flex: 1, backgroundColor: "#0F1117" },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
   back: { color: "#fff", fontSize: 22, width: 32 },
   title: { color: "#fff", fontWeight: "900", fontSize: 20 },
-  addLink: { color: "#10B981", fontWeight: "700", fontSize: 15 },
+  addLink: { color: "#2ECC71", fontWeight: "700", fontSize: 15 },
   list: { padding: 16, paddingBottom: 60 },
 
   empty: { alignItems: "center", paddingTop: 80 },
   emptyEmoji: { fontSize: 52, marginBottom: 12 },
   emptyTitle: { color: "#fff", fontWeight: "800", fontSize: 18, marginBottom: 8 },
-  emptySubtitle: { color: "#6B7280", fontSize: 13, textAlign: "center", marginBottom: 28, paddingHorizontal: 20 },
-  addBtn: { backgroundColor: "#10B981", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
+  emptySubtitle: { color: "#8A8A9A", fontSize: 13, textAlign: "center", marginBottom: 28, paddingHorizontal: 20 },
+  addBtn: { backgroundColor: "#2ECC71", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
   addBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
 
-  card: { backgroundColor: "#0C1220", borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#1C2A3E" },
-  cardDefault: { borderColor: "#10B98150" },
-  cardSelectable: { borderColor: "#1C2A3E" },
+  card: { backgroundColor: "#16181F", borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#262830" },
+  cardDefault: { borderColor: "#2ECC7150" },
+  cardSelectable: { borderColor: "#262830" },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   labelEmoji: { fontSize: 16 },
   labelText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  defaultBadge: { backgroundColor: "#10B98120", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: "#10B98140" },
-  defaultBadgeText: { color: "#10B981", fontSize: 10, fontWeight: "700" },
+  defaultBadge: { backgroundColor: "#2ECC7120", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: "#2ECC7140" },
+  defaultBadgeText: { color: "#2ECC71", fontSize: 10, fontWeight: "700" },
   cardActions: { flexDirection: "row", gap: 12 },
   actionBtn: { padding: 4 },
   actionEdit: { color: "#60A5FA", fontSize: 13, fontWeight: "600" },
-  actionDelete: { color: "#EF4444", fontSize: 13, fontWeight: "600" },
-  addressLine: { color: "#E8EDF8", fontSize: 14, marginBottom: 2 },
-  addressCity: { color: "#6B7280", fontSize: 13, marginTop: 3 },
-  setDefaultBtn: { marginTop: 12, borderTopWidth: 1, borderTopColor: "#1C2A3E", paddingTop: 10 },
-  setDefaultText: { color: "#10B981", fontSize: 13, fontWeight: "600" },
-  selectHint: { marginTop: 10, borderTopWidth: 1, borderTopColor: "#1C2A3E", paddingTop: 8 },
-  selectHintText: { color: "#10B981", fontSize: 12, fontWeight: "600" },
+  actionDelete: { color: "#E05252", fontSize: 13, fontWeight: "600" },
+  addressLine: { color: "#F0F0F5", fontSize: 14, marginBottom: 2 },
+  addressCity: { color: "#8A8A9A", fontSize: 13, marginTop: 3 },
+  setDefaultBtn: { marginTop: 12, borderTopWidth: 1, borderTopColor: "#262830", paddingTop: 10 },
+  setDefaultText: { color: "#2ECC71", fontSize: 13, fontWeight: "600" },
+  selectHint: { marginTop: 10, borderTopWidth: 1, borderTopColor: "#262830", paddingTop: 8 },
+  selectHintText: { color: "#2ECC71", fontSize: 12, fontWeight: "600" },
 
   // Modal
-  modal: { flex: 1, backgroundColor: "#060A12" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingTop: 56, borderBottomWidth: 1, borderBottomColor: "#1C2A3E" },
+  modal: { flex: 1, backgroundColor: "#0F1117" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingTop: 56, borderBottomWidth: 1, borderBottomColor: "#262830" },
   modalTitle: { color: "#fff", fontWeight: "900", fontSize: 20 },
-  modalClose: { color: "#6B7280", fontSize: 22, padding: 4 },
+  modalClose: { color: "#8A8A9A", fontSize: 22, padding: 4 },
   form: { padding: 20, gap: 4, paddingBottom: 60 },
-  fieldLabel: { color: "#9CA3AF", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
+  fieldLabel: { color: "#7A7A8E", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
   labelOptions: { flexDirection: "row", gap: 8 },
-  labelOption: { flex: 1, paddingVertical: 10, backgroundColor: "#111827", borderRadius: 12, alignItems: "center", borderWidth: 1, borderColor: "#1F2937" },
-  labelOptionActive: { backgroundColor: "#10B98120", borderColor: "#10B981" },
-  labelOptionText: { color: "#6B7280", fontSize: 13, fontWeight: "600" },
-  labelOptionTextActive: { color: "#10B981" },
-  gpsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#10B98115", borderWidth: 1, borderColor: "#10B98140", borderRadius: 12, paddingVertical: 12, marginTop: 8 },
-  gpsBtnText: { color: "#10B981", fontWeight: "700", fontSize: 14 },
-  gpsConfirm: { color: "#10B981", fontSize: 12, marginTop: 4 },
-  input: { backgroundColor: "#111827", borderWidth: 1, borderColor: "#1F2937", borderRadius: 12, paddingHorizontal: 14, height: 50, color: "#fff", fontSize: 15 },
+  labelOption: { flex: 1, paddingVertical: 10, backgroundColor: "#1E2028", borderRadius: 12, alignItems: "center", borderWidth: 1, borderColor: "#262830" },
+  labelOptionActive: { backgroundColor: "#2ECC7120", borderColor: "#2ECC71" },
+  labelOptionText: { color: "#8A8A9A", fontSize: 13, fontWeight: "600" },
+  labelOptionTextActive: { color: "#2ECC71" },
+  gpsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#2ECC7115", borderWidth: 1, borderColor: "#2ECC7140", borderRadius: 12, paddingVertical: 12, marginTop: 8 },
+  gpsBtnText: { color: "#2ECC71", fontWeight: "700", fontSize: 14 },
+  gpsConfirm: { color: "#2ECC71", fontSize: 12, marginTop: 4 },
+  input: { backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830", borderRadius: 12, paddingHorizontal: 14, height: 50, color: "#fff", fontSize: 15 },
   row: { flexDirection: "row", gap: 12 },
   rowHalf: { flex: 1 },
-  saveBtn: { backgroundColor: "#10B981", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 24 },
+  saveBtn: { backgroundColor: "#2ECC71", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 24 },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: "#000", fontWeight: "900", fontSize: 16 },
 });

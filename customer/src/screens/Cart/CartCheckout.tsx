@@ -1,5 +1,5 @@
 // customer/src/screens/Cart/CartCheckout.tsx
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, Alert, ActivityIndicator, Image,
@@ -7,8 +7,12 @@ import {
 import { useCartStore, useAuthStore, useAppStore } from "../../store";
 import { APP_CONFIG, RAZORPAY_KEY_ID } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../../lib/firebase";
 import { router } from "expo-router";
 import { format, addDays } from "date-fns";
+
+// Initialized once at module level — not recreated on every render or button press
+const functions = getFunctions(app);
 
 // After: npx expo install react-native-razorpay  →  uncomment below
 // import RazorpayCheckout from "react-native-razorpay";
@@ -27,8 +31,10 @@ export default function CartCheckout() {
   const deliveryFee = subtotal >= APP_CONFIG.freeDeliveryAbove ? 0 : APP_CONFIG.deliveryFee;
   const total = subtotal + deliveryFee;
 
-  const deliveryDates = Array.from({ length: 3 }, (_, i) =>
-    format(addDays(new Date(), i), "yyyy-MM-dd")
+  // Memoized — new Date() called once per mount, not on every render
+  const deliveryDates = useMemo(
+    () => Array.from({ length: 3 }, (_, i) => format(addDays(new Date(), i), "yyyy-MM-dd")),
+    []
   );
 
   const placeOrder = async () => {
@@ -66,7 +72,6 @@ export default function CartCheckout() {
 
     setLoading(true);
     try {
-      const functions = getFunctions();
       const placeOrderFn = httpsCallable(functions, "placeOrder");
 
       const result = await placeOrderFn({
@@ -78,9 +83,10 @@ export default function CartCheckout() {
 
       const { orderId, totalAmount, razorpayOrderId } = result.data;
 
+      const itemCount = items.reduce((a, i) => a + i.qty, 0);
       if (paymentMethod === "cod") {
         clearCart();
-        router.replace({ pathname: "/order-success", params: { orderId } });
+        router.replace({ pathname: "/order-success", params: { orderId, total: String(total), itemCount: String(itemCount) } });
         return;
       }
 
@@ -95,11 +101,11 @@ export default function CartCheckout() {
         name: APP_CONFIG.appName,
         order_id: razorpayOrderId,
         prefill: { email: user.email || "", contact: user.phone, name: user.name },
-        theme: { color: "#10B981" },
+        theme: { color: "#2ECC71" },
       };
       try {
         const rzpData: any = await RazorpayCheckout.open(rzpOptions);
-        const verifyFn = httpsCallable(functions, "verifyPayment");
+        const verifyFn = httpsCallable(functions, "verifyPayment"); // uses module-level functions
         await verifyFn({
           razorpayOrderId: rzpData.razorpay_order_id,
           razorpayPaymentId: rzpData.razorpay_payment_id,
@@ -121,7 +127,7 @@ export default function CartCheckout() {
       Alert.alert(
         "Install Razorpay",
         "Run: npx expo install react-native-razorpay\nThen uncomment the payment block in CartCheckout.tsx.",
-        [{ text: "OK", onPress: () => { clearCart(); router.replace({ pathname: "/order-success", params: { orderId } }); } }]
+        [{ text: "OK", onPress: () => { clearCart(); router.replace({ pathname: "/order-success", params: { orderId, total: String(total), itemCount: String(items.reduce((a,i)=>a+i.qty,0)) } }); } }]
       );
 
     } catch (err: any) {
@@ -314,71 +320,71 @@ export default function CartCheckout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#060A12" },
-  emptyContainer: { flex: 1, backgroundColor: "#060A12", alignItems: "center", justifyContent: "center", padding: 32 },
+  container: { flex: 1, backgroundColor: "#0F1117" },
+  emptyContainer: { flex: 1, backgroundColor: "#0F1117", alignItems: "center", justifyContent: "center", padding: 32 },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { color: "#6B7280", fontSize: 16, marginBottom: 24 },
-  shopBtn: { backgroundColor: "#10B981", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
+  emptyTitle: { color: "#8A8A9A", fontSize: 16, marginBottom: 24 },
+  shopBtn: { backgroundColor: "#2ECC71", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
   shopBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
   backArrow: { color: "#fff", fontSize: 22, marginRight: 12 },
   headerTitle: { flex: 1, color: "#fff", fontSize: 20, fontWeight: "900" },
-  itemCount: { color: "#6B7280", fontSize: 13 },
-  section: { marginHorizontal: 16, marginBottom: 14, backgroundColor: "#0C1220", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#1C2A3E" },
+  itemCount: { color: "#8A8A9A", fontSize: 13 },
+  section: { marginHorizontal: 16, marginBottom: 14, backgroundColor: "#16181F", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#262830" },
   sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  sectionTitle: { color: "#9CA3AF", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 },
-  changeLink: { color: "#10B981", fontWeight: "700", fontSize: 13 },
+  sectionTitle: { color: "#7A7A8E", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 },
+  changeLink: { color: "#2ECC71", fontWeight: "700", fontSize: 13 },
   cartItem: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
   itemImage: { width: 52, height: 52, borderRadius: 10 },
-  imgFallback: { backgroundColor: "#1C2A3E", alignItems: "center", justifyContent: "center" },
+  imgFallback: { backgroundColor: "#262830", alignItems: "center", justifyContent: "center" },
   itemInfo: { flex: 1 },
-  itemName: { color: "#E8EDF8", fontSize: 13, fontWeight: "600" },
-  itemUnit: { color: "#4B5563", fontSize: 11, marginTop: 2 },
-  itemPrice: { color: "#10B981", fontSize: 12, fontWeight: "700", marginTop: 3 },
-  qtyControl: { flexDirection: "row", alignItems: "center", backgroundColor: "#10B981", borderRadius: 8, overflow: "hidden" },
+  itemName: { color: "#F0F0F5", fontSize: 13, fontWeight: "600" },
+  itemUnit: { color: "#4E4E60", fontSize: 11, marginTop: 2 },
+  itemPrice: { color: "#2ECC71", fontSize: 12, fontWeight: "700", marginTop: 3 },
+  qtyControl: { flexDirection: "row", alignItems: "center", backgroundColor: "#2ECC71", borderRadius: 8, overflow: "hidden" },
   qtyBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 18 },
   qtyText: { color: "#000", fontWeight: "900", fontSize: 14, paddingHorizontal: 6 },
   itemTotal: { color: "#fff", fontWeight: "800", fontSize: 14, minWidth: 52, textAlign: "right" },
-  addressCard: { backgroundColor: "#111827", borderRadius: 12, padding: 12 },
+  addressCard: { backgroundColor: "#1E2028", borderRadius: 12, padding: 12 },
   addressLabel: { color: "#fff", fontWeight: "700", fontSize: 13, marginBottom: 6 },
-  addressLine: { color: "#E8EDF8", fontSize: 13 },
-  addressCity: { color: "#6B7280", fontSize: 12, marginTop: 3 },
-  addAddressBtn: { borderWidth: 1, borderColor: "#10B98140", borderRadius: 12, paddingVertical: 16, alignItems: "center" },
-  addAddressText: { color: "#10B981", fontWeight: "600", fontSize: 14 },
-  dateChip: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: "#111827", borderRadius: 12, marginRight: 8, borderWidth: 1, borderColor: "#1F2937" },
-  dateChipActive: { borderColor: "#10B981", backgroundColor: "#10B98120" },
-  dateChipText: { color: "#6B7280", fontSize: 13, fontWeight: "600" },
-  dateChipTextActive: { color: "#10B981" },
+  addressLine: { color: "#F0F0F5", fontSize: 13 },
+  addressCity: { color: "#8A8A9A", fontSize: 12, marginTop: 3 },
+  addAddressBtn: { borderWidth: 1, borderColor: "#2ECC7140", borderRadius: 12, paddingVertical: 16, alignItems: "center" },
+  addAddressText: { color: "#2ECC71", fontWeight: "600", fontSize: 14 },
+  dateChip: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: "#1E2028", borderRadius: 12, marginRight: 8, borderWidth: 1, borderColor: "#262830" },
+  dateChipActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7120" },
+  dateChipText: { color: "#8A8A9A", fontSize: 13, fontWeight: "600" },
+  dateChipTextActive: { color: "#2ECC71" },
   slotRow: { gap: 8 },
-  slotChip: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#111827", borderRadius: 14, borderWidth: 1, borderColor: "#1F2937" },
-  slotChipActive: { borderColor: "#10B981", backgroundColor: "#10B98115" },
+  slotChip: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#1E2028", borderRadius: 14, borderWidth: 1, borderColor: "#262830" },
+  slotChipActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7115" },
   slotEmoji: { fontSize: 22 },
-  slotLabel: { color: "#6B7280", fontWeight: "700", fontSize: 14 },
-  slotLabelActive: { color: "#10B981" },
-  slotTime: { color: "#4B5563", fontSize: 12, marginTop: 2 },
-  slotCheck: { color: "#10B981", fontWeight: "900", fontSize: 16 },
-  payOption: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#111827", borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: "#1F2937" },
-  payOptionActive: { borderColor: "#10B981", backgroundColor: "#10B98110" },
+  slotLabel: { color: "#8A8A9A", fontWeight: "700", fontSize: 14 },
+  slotLabelActive: { color: "#2ECC71" },
+  slotTime: { color: "#4E4E60", fontSize: 12, marginTop: 2 },
+  slotCheck: { color: "#2ECC71", fontWeight: "900", fontSize: 16 },
+  payOption: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#1E2028", borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: "#262830" },
+  payOptionActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7110" },
   payIcon: { fontSize: 22 },
-  payLabel: { color: "#9CA3AF", fontWeight: "700", fontSize: 14 },
-  payLabelActive: { color: "#E8EDF8" },
-  paySub: { color: "#4B5563", fontSize: 11, marginTop: 2 },
+  payLabel: { color: "#7A7A8E", fontWeight: "700", fontSize: 14 },
+  payLabelActive: { color: "#F0F0F5" },
+  paySub: { color: "#4E4E60", fontSize: 11, marginTop: 2 },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#2D3D55", alignItems: "center", justifyContent: "center" },
-  radioActive: { borderColor: "#10B981" },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#10B981" },
+  radioActive: { borderColor: "#2ECC71" },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#2ECC71" },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  summaryLabel: { color: "#6B7280", fontSize: 14 },
-  summaryValue: { color: "#E8EDF8", fontSize: 14, fontWeight: "600" },
-  freeText: { color: "#10B981", fontWeight: "700", fontSize: 14 },
-  freeHint: { color: "#6B7280", fontSize: 11, marginBottom: 10 },
-  totalRow: { borderTopWidth: 1, borderTopColor: "#1C2A3E", paddingTop: 12, marginTop: 4, marginBottom: 0 },
+  summaryLabel: { color: "#8A8A9A", fontSize: 14 },
+  summaryValue: { color: "#F0F0F5", fontSize: 14, fontWeight: "600" },
+  freeText: { color: "#2ECC71", fontWeight: "700", fontSize: 14 },
+  freeHint: { color: "#8A8A9A", fontSize: 11, marginBottom: 10 },
+  totalRow: { borderTopWidth: 1, borderTopColor: "#262830", paddingTop: 12, marginTop: 4, marginBottom: 0 },
   totalLabel: { color: "#fff", fontSize: 16, fontWeight: "900" },
-  totalValue: { color: "#10B981", fontSize: 22, fontWeight: "900" },
+  totalValue: { color: "#2ECC71", fontSize: 22, fontWeight: "900" },
   placeSection: { paddingHorizontal: 16, paddingBottom: 48 },
-  placeBtn: { backgroundColor: "#10B981", borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  placeBtn: { backgroundColor: "#2ECC71", borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },
   placeBtnDisabled: { opacity: 0.6 },
   placeBtnText: { color: "#000", fontWeight: "900", fontSize: 17 },
   placeBtnAmt: { color: "#000", fontWeight: "700", fontSize: 17, opacity: 0.8 },
-  disclaimer: { color: "#374151", fontSize: 11, textAlign: "center", marginTop: 12 },
+  disclaimer: { color: "#3D3D50", fontSize: 11, textAlign: "center", marginTop: 12 },
 });

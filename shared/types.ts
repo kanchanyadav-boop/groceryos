@@ -47,6 +47,7 @@ export interface Product {
 
 export interface InventoryItem {
   skuId: string;
+  storeId: string; // Inventory is store-specific
   quantity: number;
   reserved: number;       // qty reserved for pending orders
   available: number;      // quantity - reserved
@@ -77,6 +78,7 @@ export interface StatusHistoryEntry {
 export interface Order {
   id: string;
   userId: string;
+  storeId?: string; // Store assigned based on delivery pincode
   agentId?: string;
   status: OrderStatus;
   statusHistory: StatusHistoryEntry[];
@@ -113,6 +115,7 @@ export interface Agent {
   name: string;
   phone: string;
   vehicleNumber: string;
+  storeId?: string; // Agent assigned to specific store
   status: AgentStatus;
   location?: GeoPoint;
   locationUpdatedAt?: string;
@@ -156,6 +159,30 @@ export interface StaffMember {
   permissions: string[];
   createdAt: string;
   lastLoginAt?: string;
+}
+
+export interface Store {
+  id: string;
+  name: string;
+  code: string; // Unique store code (e.g., "STR001")
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    location: GeoPoint;
+  };
+  phone: string;
+  email?: string;
+  serviceablePincodes: string[]; // Array of pincodes this store services
+  isActive: boolean;
+  operatingHours?: {
+    open: string;  // "09:00"
+    close: string; // "21:00"
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DeliverySlotConfig {

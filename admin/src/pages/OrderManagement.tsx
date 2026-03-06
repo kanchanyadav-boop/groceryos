@@ -1,6 +1,6 @@
 // admin/src/pages/OrderManagement.tsx
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, getDocs, where, limit } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, where, limit, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../shared/config";
@@ -36,21 +36,21 @@ export default function OrderManagement() {
     return () => unsub();
   }, []);
 
+  // Real-time agent list so status changes (available ↔ busy) reflect immediately
   useEffect(() => {
-    getDocs(query(collection(db, COLLECTIONS.AGENTS), where("status", "==", "available")))
-      .then(snap => setAgents(snap.docs.map(d => ({ id: d.id, ...d.data() } as Agent))));
+    const q = query(collection(db, COLLECTIONS.AGENTS), where("status", "==", "available"));
+    return onSnapshot(q, snap => {
+      setAgents(snap.docs.map(d => ({ id: d.id, ...d.data() } as Agent)));
+    });
   }, []);
 
   const updateStatus = async (orderId: string, status: OrderStatus, updatedBy = "admin") => {
     setUpdating(orderId);
     try {
-      const order = orders.find(o => o.id === orderId);
+      // arrayUnion appends atomically — safe against concurrent updates from other admin sessions
       await updateDoc(doc(db, COLLECTIONS.ORDERS, orderId), {
         status,
-        statusHistory: [
-          ...(order?.statusHistory || []),
-          { status, timestamp: new Date().toISOString(), updatedBy },
-        ],
+        statusHistory: arrayUnion({ status, timestamp: new Date().toISOString(), updatedBy }),
         updatedAt: serverTimestamp(),
       });
       toast.success(`Order marked as ${status}`);

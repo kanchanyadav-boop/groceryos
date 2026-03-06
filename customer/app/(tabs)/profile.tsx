@@ -85,7 +85,7 @@ export default function ProfileTab() {
               value={name}
               onChangeText={setName}
               placeholder="Your name"
-              placeholderTextColor="#4B5563"
+              placeholderTextColor="#4E4E60"
             />
             <Text style={styles.fieldLabel}>Email (optional)</Text>
             <TextInput
@@ -93,7 +93,7 @@ export default function ProfileTab() {
               value={email}
               onChangeText={setEmail}
               placeholder="your@email.com"
-              placeholderTextColor="#4B5563"
+              placeholderTextColor="#4E4E60"
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -146,8 +146,8 @@ export default function ProfileTab() {
           <Switch
             value={notifications}
             onValueChange={setNotifications}
-            trackColor={{ false: "#1C2A3E", true: "#10B98150" }}
-            thumbColor={notifications ? "#10B981" : "#4B5563"}
+            trackColor={{ false: "#262830", true: "#2ECC7150" }}
+            thumbColor={notifications ? "#2ECC71" : "#4E4E60"}
           />
         </View>
       </View>
@@ -178,33 +178,33 @@ export default function ProfileTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#060A12" },
+  container: { flex: 1, backgroundColor: "#0F1117" },
   header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 8 },
   title: { fontSize: 22, fontWeight: "900", color: "#fff" },
   avatarSection: { alignItems: "center", paddingVertical: 28 },
-  avatar: { width: 72, height: 72, backgroundColor: "#10B98125", borderWidth: 2, borderColor: "#10B981", borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  avatarText: { color: "#10B981", fontSize: 30, fontWeight: "900" },
+  avatar: { width: 72, height: 72, backgroundColor: "#2ECC7125", borderWidth: 2, borderColor: "#2ECC71", borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  avatarText: { color: "#2ECC71", fontSize: 30, fontWeight: "900" },
   userName: { color: "#fff", fontWeight: "900", fontSize: 20 },
-  userPhone: { color: "#6B7280", fontSize: 13, marginTop: 4 },
-  section: { marginHorizontal: 16, marginBottom: 16, backgroundColor: "#0C1220", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#1C2A3E" },
+  userPhone: { color: "#8A8A9A", fontSize: 13, marginTop: 4 },
+  section: { marginHorizontal: 16, marginBottom: 16, backgroundColor: "#16181F", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#262830" },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  sectionTitle: { color: "#9CA3AF", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
-  editLink: { color: "#10B981", fontSize: 13, fontWeight: "700" },
-  fieldRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1C2A3E" },
-  fieldLabel: { color: "#6B7280", fontSize: 13 },
-  fieldValue: { color: "#E8EDF8", fontSize: 13, fontWeight: "600" },
+  sectionTitle: { color: "#7A7A8E", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
+  editLink: { color: "#2ECC71", fontSize: 13, fontWeight: "700" },
+  fieldRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#262830" },
+  fieldLabel: { color: "#8A8A9A", fontSize: 13 },
+  fieldValue: { color: "#F0F0F5", fontSize: 13, fontWeight: "600" },
   editForm: { gap: 12 },
-  input: { backgroundColor: "#111827", borderWidth: 1, borderColor: "#1F2937", borderRadius: 12, paddingHorizontal: 14, height: 48, color: "#fff", fontSize: 15 },
+  input: { backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830", borderRadius: 12, paddingHorizontal: 14, height: 48, color: "#fff", fontSize: 15 },
   editActions: { flexDirection: "row", gap: 10, marginTop: 4 },
-  cancelBtn: { flex: 1, backgroundColor: "#1C2A3E", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  cancelBtnText: { color: "#9CA3AF", fontWeight: "700" },
-  saveBtn: { flex: 1, backgroundColor: "#10B981", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  cancelBtn: { flex: 1, backgroundColor: "#262830", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  cancelBtnText: { color: "#7A7A8E", fontWeight: "700" },
+  saveBtn: { flex: 1, backgroundColor: "#2ECC71", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
   saveBtnText: { color: "#000", fontWeight: "900" },
   toggleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  toggleLabel: { color: "#E8EDF8", fontSize: 14 },
-  menuRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#1C2A3E" },
-  menuLabel: { color: "#E8EDF8", fontSize: 14 },
-  menuArrow: { color: "#4B5563", fontSize: 16 },
-  logoutBtn: { marginHorizontal: 16, marginTop: 4, borderWidth: 1, borderColor: "#EF444430", borderRadius: 16, paddingVertical: 16, alignItems: "center", backgroundColor: "#EF444410" },
-  logoutText: { color: "#EF4444", fontWeight: "700", fontSize: 15 },
+  toggleLabel: { color: "#F0F0F5", fontSize: 14 },
+  menuRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#262830" },
+  menuLabel: { color: "#F0F0F5", fontSize: 14 },
+  menuArrow: { color: "#4E4E60", fontSize: 16 },
+  logoutBtn: { marginHorizontal: 16, marginTop: 4, borderWidth: 1, borderColor: "#E0525230", borderRadius: 16, paddingVertical: 16, alignItems: "center", backgroundColor: "#E0525210" },
+  logoutText: { color: "#E05252", fontWeight: "700", fontSize: 15 },
 });

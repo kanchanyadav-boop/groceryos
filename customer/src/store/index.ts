@@ -112,13 +112,32 @@ export const useAuthStore = create<AuthStore>()(
 interface AppStore {
   selectedAddress: Address | null;
   selectedSlot: { date: string; slot: "AM" | "PM" } | null;
+  activeOrderCount: number;
   setSelectedAddress: (address: Address) => void;
   setSelectedSlot: (slot: { date: string; slot: "AM" | "PM" }) => void;
+  setActiveOrderCount: (count: number) => void;
 }
 
 export const useAppStore = create<AppStore>((set) => ({
   selectedAddress: null,
   selectedSlot: null,
+  activeOrderCount: 0,
   setSelectedAddress: (address) => set({ selectedAddress: address }),
   setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+  setActiveOrderCount: (count) => set({ activeOrderCount: count }),
+}));
+
+// ─── Global Loader Store ──────────────────────────────────────────────────────
+interface LoaderStore {
+  isLoading: boolean;
+  message: string;
+  showLoader: (message?: string) => void;
+  hideLoader: () => void;
+}
+
+export const useLoaderStore = create<LoaderStore>((set) => ({
+  isLoading: false,
+  message: "",
+  showLoader: (message = "Loading...") => set({ isLoading: true, message }),
+  hideLoader: () => set({ isLoading: false, message: "" }),
 }));

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   collection, query, orderBy, limit, startAfter, getDocs,
-  doc, setDoc, updateDoc, deleteDoc, serverTimestamp, where, QueryDocumentSnapshot
+  doc, setDoc, updateDoc, deleteDoc, serverTimestamp, where, writeBatch, QueryDocumentSnapshot
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
@@ -44,13 +44,14 @@ export default function SKUManagement() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProductForm>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
   });
+  // Drive category/subcategory dropdowns from RHF — single source of truth
+  const selectedCategory = watch("category", "");
 
   // ── Load products ──────────────────────────────────────────────────────────
   const loadProducts = async (reset = false) => {
@@ -82,13 +83,11 @@ export default function SKUManagement() {
     setEditProduct(null);
     reset({});
     setImageFile(null);
-    setSelectedCategory("");
     setShowModal(true);
   };
 
   const openEdit = (p: Product) => {
     setEditProduct(p);
-    setSelectedCategory(p.category);
     reset({
       name: p.name, category: p.category, subcategory: p.subcategory,
       price: p.price, mrp: p.mrp, unit: p.unit,
@@ -153,7 +152,7 @@ export default function SKUManagement() {
     loadProducts(true);
   };
 
-  // ── CSV Bulk Import ────────────────────────────────────────────────────────
+  // ── CSV Bulk Import (batched writes — 250 products per Firestore batch) ──────
   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -163,38 +162,49 @@ export default function SKUManagement() {
       skipEmptyLines: true,
       complete: async (results) => {
         const rows = results.data as any[];
-        let success = 0, failed = 0;
         const toastId = toast.loading(`Importing ${rows.length} products...`);
+        let success = 0, failed = 0;
 
-        for (const row of rows) {
+        // Each product = 2 writes (product + inventory).
+        // Firestore batch limit = 500 ops → 250 products per batch.
+        const CHUNK = 250;
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          const chunk = rows.slice(i, i + CHUNK);
+          const batch = writeBatch(db);
           try {
-            const newRef = doc(collection(db, COLLECTIONS.PRODUCTS));
-            const slug = row.name?.toLowerCase().replace(/\s+/g, "-") || newRef.id;
-            await setDoc(newRef, {
-              name: row.name || "", slug,
-              category: row.category || "Uncategorised",
-              subcategory: row.subcategory || "",
-              price: parseFloat(row.price) || 0,
-              mrp: parseFloat(row.mrp) || 0,
-              unit: row.unit || "pcs",
-              description: row.description || "",
-              brand: row.brand || "",
-              gstRate: parseFloat(row.gstRate) || 5,
-              barcode: row.barcode || "",
-              tags: row.tags ? row.tags.split(",").map((t: string) => t.trim()) : [],
-              imageUrls: [],
-              inStock: true,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
+            chunk.forEach(row => {
+              const newRef = doc(collection(db, COLLECTIONS.PRODUCTS));
+              const slug = row.name?.toLowerCase().replace(/\s+/g, "-") || newRef.id;
+              batch.set(newRef, {
+                name: row.name || "", slug,
+                category: row.category || "Uncategorised",
+                subcategory: row.subcategory || "",
+                price: parseFloat(row.price) || 0,
+                mrp: parseFloat(row.mrp) || 0,
+                unit: row.unit || "pcs",
+                description: row.description || "",
+                brand: row.brand || "",
+                gstRate: parseFloat(row.gstRate) || 5,
+                barcode: row.barcode || "",
+                tags: row.tags ? row.tags.split(",").map((t: string) => t.trim()) : [],
+                imageUrls: [],
+                inStock: true,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
+              batch.set(doc(db, COLLECTIONS.INVENTORY, newRef.id), {
+                skuId: newRef.id, quantity: parseInt(row.quantity) || 0,
+                reserved: 0, available: parseInt(row.quantity) || 0,
+                lowStockThreshold: 10, updatedBy: "csv-import",
+                updatedAt: serverTimestamp(),
+              });
+              success++;
             });
-            await setDoc(doc(db, COLLECTIONS.INVENTORY, newRef.id), {
-              skuId: newRef.id, quantity: parseInt(row.quantity) || 0,
-              reserved: 0, available: parseInt(row.quantity) || 0,
-              lowStockThreshold: 10, updatedBy: "csv-import",
-              updatedAt: serverTimestamp(),
-            });
-            success++;
-          } catch { failed++; }
+            await batch.commit();
+          } catch {
+            failed += chunk.length;
+            success -= chunk.length;
+          }
         }
 
         toast.dismiss(toastId);
@@ -322,10 +332,12 @@ export default function SKUManagement() {
 
                 <div>
                   <label className="text-gray-400 text-xs font-semibold uppercase mb-1 block">Category *</label>
-                  <select 
-                    {...register("category")} 
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                  <select
+                    {...register("category")}
+                    onChange={(e) => {
+                      setValue("category", e.target.value, { shouldValidate: true });
+                      setValue("subcategory", ""); // clear subcategory when category changes
+                    }}
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"
                   >
                     <option value="">Select Category</option>

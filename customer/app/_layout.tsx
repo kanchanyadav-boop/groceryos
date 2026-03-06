@@ -6,10 +6,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../src/lib/firebase";
-import { useAuthStore } from "../src/store";
+import { useAuthStore, useLoaderStore } from "../src/store";
 import { COLLECTIONS } from "../src/shared/config";
 import { User } from "../src/shared/types";
 import * as Notifications from "expo-notifications";
+import GlobalLoader from "../src/components/GlobalLoader";
 
 // Configure how notifications are shown when app is in foreground
 Notifications.setNotificationHandler({
@@ -22,6 +23,7 @@ Notifications.setNotificationHandler({
 
 export default function RootLayout() {
   const { setUser, clearUser } = useAuthStore();
+  const { isLoading, message } = useLoaderStore();
 
   useEffect(() => {
     // Listen for Firebase auth state changes
@@ -59,6 +61,9 @@ export default function RootLayout() {
         <Stack.Screen name="address/index" options={{ animation: "slide_from_right" }} />
         <Stack.Screen name="order-success" options={{ animation: "fade" }} />
       </Stack>
+      
+      {/* Global Loader */}
+      <GlobalLoader visible={isLoading} message={message} />
     </GestureHandlerRootView>
   );
 }
