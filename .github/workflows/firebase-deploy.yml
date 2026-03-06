@@ -80,6 +80,17 @@ jobs:
         run: |
           firebase deploy --only functions --project groceryos-61a05 --force
 
+      - name: Set IAM invoker policy for HTTP/callable functions
+        run: |
+          gcloud auth activate-service-account --key-file=$HOME/gcloud-key.json
+          for fn in signInWithPhone razorpayWebhook placeOrder verifyPayment autoAssignAgent setStaffRole; do
+            gcloud functions add-iam-policy-binding $fn \
+              --region=us-central1 \
+              --project=groceryos-61a05 \
+              --member=allUsers \
+              --role=roles/cloudfunctions.invoker || echo "IAM for $fn already set or skipped"
+          done
+
       - name: Deploy Admin Hosting
         run: |
           firebase deploy --only hosting --project groceryos-61a05

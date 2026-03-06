@@ -4,13 +4,9 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert,
 } from "react-native";
-import { signInWithCustomToken } from "firebase/auth";
+import { signInAnonymously } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import app from "../../lib/firebase";
-
-const functions = getFunctions(app);
 import { useAuthStore, useLoaderStore } from "../../store";
 import { COLLECTIONS } from "../../shared/config";
 import { User } from "../../shared/types";
@@ -85,7 +81,6 @@ export default function OTPAuth() {
       return;
     }
 
-    // Demo mode: Check against hardcoded OTP
     if (otp !== DEMO_OTP) {
       setOtpError("Incorrect OTP. Please try again.");
       return;
@@ -96,25 +91,32 @@ export default function OTPAuth() {
     showLoader("Verifying OTP...");
 
     try {
-      // Step 1: Call Cloud Function to get a Firebase custom token.
-      // This creates a real Firebase Auth session (needed for Firestore rules
-      // and the placeOrder Cloud Function which checks context.auth).
-      const signInFn = httpsCallable(functions, "signInWithPhone");
-      const { data: signInData } = await signInFn({ phone: normalized }) as any;
+      // Reuse an existing persisted session, or sign in anonymously.
+      // Anonymous auth satisfies Firestore rules (request.auth != null) and
+      // the placeOrder Cloud Function (context.auth != null).
+      // TODO: Replace with real Firebase Phone Auth for production.
+      const existingUser = auth.currentUser;
+      const firebaseUid = existingUser
+        ? existingUser.uid
+        : (await signInAnonymously(auth)).user.uid;
 
-      // Step 2: Sign into Firebase Auth with the custom token
-      const credential = await signInWithCustomToken(auth, signInData.customToken);
-      const uid = credential.user.uid; // same as phone-derived ID
-
-      // Step 3: Load the user profile from Firestore
-      const userRef = doc(db, COLLECTIONS.USERS, uid);
+      // User profile document is keyed by phone-derived ID for human readability.
+      const phoneDocId = normalized.replace(/\+/g, "").replace(/\s/g, "");
+      const userRef = doc(db, COLLECTIONS.USERS, phoneDocId);
       const userDoc = await getDoc(userRef);
 
-      const userProfile: User = userDoc.exists()
-        ? { id: userDoc.id, ...userDoc.data() } as User
-        : { id: uid, name: "", phone: normalized, addresses: [] };
+      let userProfile: User;
+      if (userDoc.exists()) {
+        userProfile = { id: userDoc.id, ...userDoc.data() } as User;
+        await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+      } else {
+        userProfile = { id: phoneDocId, name: "", phone: normalized, addresses: [] };
+        await setDoc(userRef, { ...userProfile, createdAt: serverTimestamp() });
+      }
 
-      setUser(userProfile, uid);
+      // firebaseUid = anonymous Auth UID — this is what placeOrder stores on
+      // orders and what orders.tsx queries, so everything stays in sync.
+      setUser(userProfile, firebaseUid);
 
       if (!userProfile.name) {
         router.replace("/(auth)/onboarding");
