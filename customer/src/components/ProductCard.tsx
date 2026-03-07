@@ -8,14 +8,17 @@ import { Product } from "../shared/types";
 
 const { width } = Dimensions.get("window");
 export const CARD_WIDTH = width * 0.32; // used for horizontal lists
+export const CARD_HEIGHT = 185; // Fixed height for absolute alignment in grids
 
 interface Props {
     product: Product;
     /** Set to true when used in a horizontal FlatList (e.g. home page rows) */
     horizontal?: boolean;
+    /** Optional overlay badge (e.g. "Ordered 2×") */
+    badge?: string;
 }
 
-export default function ProductCard({ product, horizontal = false }: Props) {
+export default function ProductCard({ product, horizontal = false, badge }: Props) {
     const { addItem, updateQty, getItemQty } = useCartStore();
     const qty = getItemQty(product.id);
     const discount = product.mrp > product.price
@@ -24,7 +27,10 @@ export default function ProductCard({ product, horizontal = false }: Props) {
 
     return (
         <TouchableOpacity
-            style={[styles.card, horizontal && { width: CARD_WIDTH, flex: 0 }]}
+            style={[
+                styles.card,
+                horizontal && { width: CARD_WIDTH, height: CARD_HEIGHT, flex: 0 }
+            ]}
             onPress={() => router.push(`/product/${product.id}`)}
             activeOpacity={0.8}
         >
@@ -40,6 +46,11 @@ export default function ProductCard({ product, horizontal = false }: Props) {
                 {discount > 0 && (
                     <View style={styles.discountBadge}>
                         <Text style={styles.discountText}>{discount}% off</Text>
+                    </View>
+                )}
+                {badge && (
+                    <View style={styles.orderBadge}>
+                        <Text style={styles.orderBadgeText}>{badge}</Text>
                     </View>
                 )}
                 {!product.inStock && (
@@ -145,4 +156,10 @@ export const styles = StyleSheet.create({
     qtyBtn: { width: 28, height: 26, alignItems: "center", justifyContent: "center" },
     qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 15, lineHeight: 17 },
     qtyText: { color: "#000", fontWeight: "900", fontSize: 13 },
+    orderBadge: {
+        position: "absolute", top: 6, right: 6,
+        backgroundColor: "#2ECC71", borderRadius: 5,
+        paddingHorizontal: 5, paddingVertical: 2,
+    },
+    orderBadgeText: { color: "#000", fontSize: 9, fontWeight: "800" },
 });

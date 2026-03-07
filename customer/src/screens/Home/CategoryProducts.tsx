@@ -7,7 +7,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
 import { Product } from "../../shared/types";
-import { useCartStore, useLoaderStore } from "../../store";
+import { useCartStore, useLoaderStore, useAppStore } from "../../store";
 import { router, useLocalSearchParams } from "expo-router";
 import { GROCERY_CATEGORIES } from "../../shared/categories";
 import ProductCard from "../../components/ProductCard";
@@ -21,6 +21,7 @@ export default function CategoryProducts() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const { getItemCount, getTotal } = useCartStore();
   const { showLoader, hideLoader } = useLoaderStore();
+  const { serviceableStoreId } = useAppStore();
   const cartCount = getItemCount();
   const cartTotal = getTotal();
 
@@ -29,13 +30,31 @@ export default function CategoryProducts() {
   const fetchProducts = async () => {
     try {
       if (!refreshing) showLoader("Loading products...");
-      const q = query(
-        collection(db, COLLECTIONS.PRODUCTS),
-        where("category", "==", category),
-        where("inStock", "==", true)
-      );
-      const snap = await getDocs(q);
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+
+      const [productSnap, invSnap] = await Promise.all([
+        getDocs(query(
+          collection(db, COLLECTIONS.PRODUCTS),
+          where("category", "==", category),
+          where("inStock", "==", true)
+        )),
+        serviceableStoreId
+          ? getDocs(query(collection(db, COLLECTIONS.INVENTORY), where("storeId", "==", serviceableStoreId)))
+          : Promise.resolve(null),
+      ]);
+
+      let fetchedProducts = productSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+
+      // Filter to products with actual stock at the customer's store
+      if (invSnap && !invSnap.empty) {
+        const stockedSkuIds = new Set(
+          invSnap.docs
+            .filter(d => (d.data().available ?? 0) > 0)
+            .map(d => d.data().skuId as string)
+        );
+        fetchedProducts = fetchedProducts.filter(p => stockedSkuIds.has(p.id));
+      }
+
+      setProducts(fetchedProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {

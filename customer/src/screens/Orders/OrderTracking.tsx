@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
@@ -12,13 +13,14 @@ import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 
 const STATUS_STEPS: { status: OrderStatus; label: string; icon: string }[] = [
-  { status: "confirmed",  label: "Order Confirmed",    icon: "✅" },
-  { status: "packed",     label: "Order Packed",        icon: "📦" },
-  { status: "dispatched", label: "Out for Delivery",    icon: "🛵" },
-  { status: "delivered",  label: "Delivered",           icon: "🎉" },
+  { status: "confirmed", label: "Order Confirmed", icon: "✅" },
+  { status: "packed", label: "Order Packed", icon: "📦" },
+  { status: "dispatched", label: "Out for Delivery", icon: "🛵" },
+  { status: "delivered", label: "Delivered", icon: "🎉" },
 ];
 
 export default function OrderTracking() {
+  const insets = useSafeAreaInsets();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -121,8 +123,14 @@ export default function OrderTracking() {
         showsVerticalScrollIndicator={false}
       >
         {/* Back + Title */}
-        <View style={styles.sheetHeader}>
-          <TouchableOpacity onPress={() => router.back()}>
+        <View style={[styles.sheetHeader, !isLive && !isDelivered && { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(tabs)/orders");
+            }
+          }}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -130,11 +138,11 @@ export default function OrderTracking() {
             <Text style={styles.orderSubtitle}>
               {order.createdAt
                 ? format(
-                    order.createdAt instanceof Timestamp
-                      ? order.createdAt.toDate()
-                      : new Date(order.createdAt),
-                    "dd MMM, hh:mm a"
-                  )
+                  order.createdAt instanceof Timestamp
+                    ? order.createdAt.toDate()
+                    : new Date(order.createdAt),
+                  "dd MMM, hh:mm a"
+                )
                 : ""}
             </Text>
           </View>
@@ -155,7 +163,7 @@ export default function OrderTracking() {
                 const diffMins = Math.max(0, Math.round((etaDate.getTime() - Date.now()) / 60000));
                 const rel = diffMins < 1 ? "arriving now"
                   : diffMins < 60 ? `~${diffMins} min`
-                  : `~${Math.round(diffMins / 60)}h ${diffMins % 60}m`;
+                    : `~${Math.round(diffMins / 60)}h ${diffMins % 60}m`;
                 return (
                   <Text style={styles.eta}>
                     Arriving {rel} · {format(etaDate, "hh:mm a")}

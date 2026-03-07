@@ -70,12 +70,13 @@ export default function Dispatch() {
     setAssigning(orderId);
     try {
       await updateDoc(doc(db, COLLECTIONS.ORDERS, orderId), {
-        agentId, updatedAt: serverTimestamp(),
+        agentId, status: "dispatched", updatedAt: serverTimestamp(),
       });
+      // Mark agent busy — don't overwrite activeOrderId so multi-order works
       await updateDoc(doc(db, COLLECTIONS.AGENTS, agentId), {
-        status: "busy", activeOrderId: orderId,
+        status: "busy",
       });
-      toast.success("Delivery agent assigned successfully");
+      toast.success("Agent assigned successfully");
     } catch (err: any) {
       toast.error(friendlyError(err, "Failed to assign agent. Please try again."));
     }
@@ -96,6 +97,13 @@ export default function Dispatch() {
 
   const availableAgents = agents.filter(a => a.status === "available");
   const busyAgents = agents.filter(a => a.status === "busy");
+  // All active agents (available + busy) can be assigned orders
+  const assignableAgents = agents.filter(a => a.status !== "offline");
+  // Count active orders per agent for the board
+  const ordersByAgent = activeOrders.reduce((acc, o) => {
+    if (o.agentId) acc[o.agentId] = (acc[o.agentId] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="p-6">
@@ -165,9 +173,15 @@ export default function Dispatch() {
                       disabled={assigning === order.id}
                       className="flex-1 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
                     >
-                      <option value="">Assign agent manually...</option>
+                      <option value="">Assign agent...</option>
+                      {assignableAgents.length === 0 && (
+                        <option disabled>No agents online</option>
+                      )}
                       {availableAgents.map(a => (
-                        <option key={a.id} value={a.id}>{a.name} · ⭐{a.rating?.toFixed(1)}</option>
+                        <option key={a.id} value={a.id}>✅ {a.name} · ⭐{a.rating?.toFixed(1)}</option>
+                      ))}
+                      {busyAgents.map(a => (
+                        <option key={a.id} value={a.id}>🔵 {a.name} (busy {ordersByAgent[a.id] || 1} order) · ⭐{a.rating?.toFixed(1)}</option>
                       ))}
                     </select>
                     <button
@@ -264,10 +278,10 @@ export default function Dispatch() {
                   </div>
                   <div className="text-gray-600 text-xs">{agent.totalDeliveries} deliveries</div>
                 </div>
-                {agent.status === "busy" && agent.activeOrderId && (
+                {agent.status === "busy" && (
                   <div className="mt-2 bg-blue-500/10 rounded-lg px-2 py-1">
-                    <span className="text-blue-400 text-xs font-mono">
-                      #{agent.activeOrderId.slice(-6).toUpperCase()}
+                    <span className="text-blue-400 text-xs font-semibold">
+                      {ordersByAgent[agent.id] || 1} active order{(ordersByAgent[agent.id] || 1) > 1 ? "s" : ""}
                     </span>
                   </div>
                 )}

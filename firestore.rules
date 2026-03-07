@@ -86,10 +86,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ── Delivery slots: authenticated read, admin write ─────────────────────
+    // ── Delivery slots: authenticated read, staff write ─────────────────────
     match /deliverySlots/{date} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAuthenticated() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
 
     // ── Inventory logs: staff read ──────────────────────────────────────────
@@ -113,7 +113,7 @@ service cloud.firestore {
     // ── Settings: staff only ────────────────────────────────────────────────
     match /settings/{settingId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isAuthenticated() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
 
     // ── Notifications: user specific ────────────────────────────────────────

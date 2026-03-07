@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
-  ActivityIndicator, RefreshControl, ScrollView,
+  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  RefreshControl, ScrollView,
 } from "react-native";
 import {
   collection, query, where, orderBy, getDocs, limit,
@@ -12,96 +12,24 @@ import { Order, Product, OrderItem } from "../../shared/types";
 import { useCartStore, useAuthStore, useLoaderStore } from "../../store";
 import { router } from "expo-router";
 import DrawerMenu from "../../components/DrawerMenu";
+import ProductCard, { CARD_WIDTH } from "../../components/ProductCard";
 
 interface ProductWithFrequency extends Product {
   orderCount: number;
   lastOrderedAt: string;
 }
 
-interface ProductCardProps {
+interface ReorderCardProps {
   product: ProductWithFrequency;
 }
 
-function ProductCard({ product }: ProductCardProps) {
-  const { addItem, updateQty, getItemQty } = useCartStore();
-  const qty = getItemQty(product.id);
-  const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
-
+function ReorderCard({ product }: ReorderCardProps) {
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push(`/product/${product.id}`)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.imageContainer}>
-        {product.imageUrls?.[0] ? (
-          <Image source={{ uri: product.imageUrls[0] }} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={[styles.image, styles.imageFallback]}>
-            <Text style={styles.imageFallbackText}>🛒</Text>
-          </View>
-        )}
-        {discount > 0 && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{discount}% off</Text>
-          </View>
-        )}
-        {!product.inStock && (
-          <View style={styles.outOfStockOverlay}>
-            <Text style={styles.outOfStockText}>Out of Stock</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardBody}>
-        <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-        <Text style={styles.productUnit}>{product.unit}</Text>
-
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderCount}>
-            Ordered {product.orderCount} {product.orderCount === 1 ? "time" : "times"}
-          </Text>
-        </View>
-
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{product.price}</Text>
-          {product.mrp > product.price && (
-            <Text style={styles.mrp}>₹{product.mrp}</Text>
-          )}
-        </View>
-
-        {product.inStock ? (
-          qty > 0 ? (
-            <View style={styles.qtyControl}>
-              <TouchableOpacity
-                style={styles.qtyBtn}
-                onPress={() => updateQty(product.id, qty - 1)}
-              >
-                <Text style={styles.qtyBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.qtyText}>{qty}</Text>
-              <TouchableOpacity
-                style={styles.qtyBtn}
-                onPress={() => addItem(product)}
-              >
-                <Text style={styles.qtyBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={() => addItem(product)}
-            >
-              <Text style={styles.addBtnText}>+ Add</Text>
-            </TouchableOpacity>
-          )
-        ) : (
-          <View style={styles.addBtnDisabled}>
-            <Text style={styles.addBtnDisabledText}>Unavailable</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
+    <ProductCard
+      product={product}
+      horizontal
+      badge={`${product.orderCount}×`}
+    />
   );
 }
 
@@ -140,7 +68,7 @@ export default function ReorderScreen() {
 
       // Extract unique product IDs and count frequency
       const productFrequency: Record<string, { count: number; lastOrderedAt: string }> = {};
-      
+
       orders.forEach(order => {
         order.items.forEach(item => {
           if (!productFrequency[item.skuId]) {
@@ -159,7 +87,7 @@ export default function ReorderScreen() {
 
       // Fetch product details for all ordered items
       const productIds = Object.keys(productFrequency);
-      
+
       if (productIds.length === 0) {
         setPreviouslyOrdered([]);
         setFrequentlyBought([]);
@@ -346,7 +274,7 @@ export default function ReorderScreen() {
               horizontal
               data={frequentlyBought}
               keyExtractor={item => item.id}
-              renderItem={({ item }) => <ProductCard product={item} />}
+              renderItem={({ item }) => <ReorderCard product={item} />}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
             />
@@ -361,9 +289,12 @@ export default function ReorderScreen() {
           </View>
           <View style={styles.grid}>
             {previouslyOrdered.map(product => (
-              <View key={product.id} style={styles.gridItem}>
-                <ProductCard product={product} />
-              </View>
+              <ProductCard
+                key={product.id}
+                product={product}
+                horizontal
+                badge={`${product.orderCount}×`}
+              />
             ))}
           </View>
         </View>
@@ -433,104 +364,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 10,
   },
-  gridItem: { width: "48%" },
 
-  // Product Card
-  card: {
-    backgroundColor: "#0C1220",
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#1C2A3E",
-    width: 170,
-  },
-  imageContainer: { position: "relative" },
-  image: { width: "100%", height: 130 },
-  imageFallback: {
-    backgroundColor: "#1C2A3E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imageFallbackText: { fontSize: 40 },
-  discountBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "#EF4444",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  discountText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  outOfStockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  outOfStockText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  cardBody: { padding: 10 },
-  productName: {
-    color: "#E8EDF8",
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  productUnit: { color: "#4B5563", fontSize: 11, marginTop: 2 },
-  orderInfo: { marginTop: 4 },
-  orderCount: {
-    color: "#10B981",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 6,
-  },
-  price: { color: "#10B981", fontWeight: "900", fontSize: 16 },
-  mrp: {
-    color: "#4B5563",
-    fontSize: 12,
-    textDecorationLine: "line-through",
-  },
-  addBtn: {
-    marginTop: 8,
-    backgroundColor: "#10B98120",
-    borderWidth: 1,
-    borderColor: "#10B981",
-    borderRadius: 8,
-    paddingVertical: 6,
-    alignItems: "center",
-  },
-  addBtnText: { color: "#10B981", fontWeight: "700", fontSize: 13 },
-  addBtnDisabled: {
-    marginTop: 8,
-    backgroundColor: "#1C2A3E",
-    borderRadius: 8,
-    paddingVertical: 6,
-    alignItems: "center",
-  },
-  addBtnDisabledText: { color: "#4B5563", fontWeight: "600", fontSize: 12 },
-  qtyControl: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-    backgroundColor: "#10B981",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  qtyBtn: {
-    width: 34,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 18, lineHeight: 20 },
-  qtyText: { color: "#000", fontWeight: "900", fontSize: 14 },
+
 
   // Empty State
   emptyContainer: {

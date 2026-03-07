@@ -10,7 +10,11 @@ import { useAuthStore, useLoaderStore } from "../src/store";
 import { COLLECTIONS } from "../src/shared/config";
 import { User } from "../src/shared/types";
 import * as Notifications from "expo-notifications";
+import * as SplashScreen from "expo-splash-screen";
 import GlobalLoader from "../src/components/GlobalLoader";
+
+// Prevent splash screen from auto-hiding immediately
+SplashScreen.preventAutoHideAsync();
 
 // Configure how notifications are shown when app is in foreground
 Notifications.setNotificationHandler({
@@ -38,7 +42,16 @@ export default function RootLayout() {
         clearUser();
       }
     });
-    return () => unsubscribe();
+
+    // Mandatory branding delay (3 seconds)
+    const splashTimer = setTimeout(async () => {
+      await SplashScreen.hideAsync();
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(splashTimer);
+    };
   }, []);
 
   return (
@@ -61,7 +74,7 @@ export default function RootLayout() {
         <Stack.Screen name="address/index" options={{ animation: "slide_from_right" }} />
         <Stack.Screen name="order-success" options={{ animation: "fade" }} />
       </Stack>
-      
+
       {/* Global Loader */}
       <GlobalLoader visible={isLoading} message={message} />
     </GestureHandlerRootView>

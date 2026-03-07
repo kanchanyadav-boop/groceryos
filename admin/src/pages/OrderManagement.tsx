@@ -1,12 +1,12 @@
 // admin/src/pages/OrderManagement.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, where, limit, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../shared/config";
-import { Order, OrderStatus, Agent } from "../../shared/types";
+import { Order, OrderStatus, Agent, Store } from "../../shared/types";
 import { fmtDate } from "../lib/utils";
-import { Eye, Truck, X, ChevronDown } from "lucide-react";
+import { Eye, Truck, X, Store as StoreIcon } from "lucide-react";
 import { friendlyError } from "../lib/errors";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -23,13 +23,15 @@ const STATUS_FLOW: OrderStatus[] = ["confirmed", "packed", "dispatched", "delive
 export default function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [storeFilter, setStoreFilter] = useState<string>("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, COLLECTIONS.ORDERS), orderBy("createdAt", "desc"), limit(100));
+    const q = query(collection(db, COLLECTIONS.ORDERS), orderBy("createdAt", "desc"), limit(200));
     const unsub = onSnapshot(q, snap => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
       setLoading(false);
@@ -37,13 +39,31 @@ export default function OrderManagement() {
     return () => unsub();
   }, []);
 
-  // Real-time agent list so status changes (available ↔ busy) reflect immediately
+  // Real-time agent list
   useEffect(() => {
     const q = query(collection(db, COLLECTIONS.AGENTS), where("status", "==", "available"));
     return onSnapshot(q, snap => {
       setAgents(snap.docs.map(d => ({ id: d.id, ...d.data() } as Agent)));
     });
   }, []);
+
+  // Real-time stores
+  useEffect(() => {
+    return onSnapshot(collection(db, COLLECTIONS.STORES), snap => {
+      setStores(snap.docs.map(d => ({ id: d.id, ...d.data() } as Store)));
+    });
+  }, []);
+
+  // Build pincode → storeId map for orders that pre-date the storeId field
+  const pincodeToStoreId = useMemo(() => {
+    const map: Record<string, string> = {};
+    stores.forEach(s => s.serviceablePincodes?.forEach(pin => { map[pin] = s.id; }));
+    return map;
+  }, [stores]);
+
+  // Resolve store for an order: storeId field first, fall back to pincode lookup
+  const resolveStoreId = (order: Order) =>
+    order.storeId || pincodeToStoreId[order.deliveryAddress?.pincode || ""] || null;
 
   const STATUS_LABELS: Record<OrderStatus, string> = {
     confirmed: "Confirmed",
@@ -91,25 +111,51 @@ export default function OrderManagement() {
     setUpdating(null);
   };
 
-  const filtered = statusFilter === "all" ? orders : orders.filter(o => o.status === statusFilter);
+  // Apply store filter first, then status filter
+  const storeFiltered = storeFilter === "all"
+    ? orders
+    : orders.filter(o => resolveStoreId(o) === storeFilter);
 
-  const counts = orders.reduce((acc, o) => {
+  const filtered = statusFilter === "all"
+    ? storeFiltered
+    : storeFiltered.filter(o => o.status === statusFilter);
+
+  const counts = storeFiltered.reduce((acc, o) => {
     acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-white text-2xl font-black">Order Management</h1>
-        <p className="text-gray-500 text-sm mt-1">Live orders · Updates in real-time</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-white text-2xl font-black">Order Management</h1>
+          <p className="text-gray-500 text-sm mt-1">Live orders · Updates in real-time</p>
+        </div>
+        {/* Store selector */}
+        <div className="flex items-center gap-2">
+          <StoreIcon size={14} className="text-gray-500" />
+          <select
+            value={storeFilter}
+            onChange={e => setStoreFilter(e.target.value)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
+          >
+            <option value="all">All Stores ({orders.length})</option>
+            {stores.map(s => {
+              const count = orders.filter(o => resolveStoreId(o) === s.id).length;
+              return (
+                <option key={s.id} value={s.id}>{s.name} ({count})</option>
+              );
+            })}
+          </select>
+        </div>
       </div>
 
       {/* Status filter pills */}
       <div className="flex gap-2 flex-wrap mb-5">
         <button onClick={() => setStatusFilter("all")}
           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${statusFilter === "all" ? "bg-white text-black" : "bg-gray-800 text-gray-400"}`}>
-          All ({orders.length})
+          All ({storeFiltered.length})
         </button>
         {(Object.keys(STATUS_COLORS) as OrderStatus[]).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
@@ -124,7 +170,7 @@ export default function OrderManagement() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-800">
-              {["Order ID", "Customer", "Items", "Total", "Payment", "Slot", "Status", "Agent", "Actions"].map(h => (
+              {["Order ID", "Store", "Customer", "Items", "Total", "Payment", "Slot", "Status", "Agent", "Actions"].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
               ))}
             </tr>
@@ -135,6 +181,16 @@ export default function OrderManagement() {
                 <td className="px-4 py-3">
                   <span className="text-emerald-400 text-xs font-mono">#{order.id.slice(-6).toUpperCase()}</span>
                   <div className="text-gray-600 text-xs">{fmtDate(order.createdAt, "dd MMM, hh:mm a")}</div>
+                </td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const sid = resolveStoreId(order);
+                    const store = stores.find(s => s.id === sid);
+                    return store
+                      ? <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-lg whitespace-nowrap">{store.code}</span>
+                      : <span className="text-xs text-gray-600">—</span>;
+                  })()}
+                  <div className="text-gray-600 text-xs mt-0.5">{order.deliveryAddress?.pincode}</div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-white text-sm font-semibold">{order.deliveryAddress?.label || "Customer"}</div>
@@ -242,6 +298,19 @@ export default function OrderManagement() {
                   <div className="flex justify-between text-white font-black text-base pt-1 border-t border-gray-800"><span>Total</span><span>₹{selectedOrder.totalAmount}</span></div>
                 </div>
               </div>
+
+              {/* Store */}
+              {(() => {
+                const sid = resolveStoreId(selectedOrder);
+                const store = stores.find(s => s.id === sid);
+                return store ? (
+                  <div>
+                    <div className="text-gray-500 text-xs font-bold uppercase mb-2">Serving Store</div>
+                    <div className="text-blue-400 text-sm font-semibold">{store.name} <span className="text-gray-600 font-mono text-xs">({store.code})</span></div>
+                    <div className="text-gray-500 text-xs">{store.address.line1}, {store.address.city}</div>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Address */}
               <div>

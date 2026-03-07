@@ -1,6 +1,6 @@
 // admin/src/pages/BarcodeProductImport.tsx
 import { useState } from "react";
-import { collection, doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, serverTimestamp, getDoc, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
 import toast from "react-hot-toast";
@@ -127,6 +127,12 @@ export default function BarcodeProductImport() {
     setLoading(false);
   };
 
+  // Fetch active store IDs once per import operation
+  const getActiveStoreIds = async (): Promise<string[]> => {
+    const snap = await getDocs(query(collection(db, COLLECTIONS.STORES), where("isActive", "==", true)));
+    return snap.docs.map(d => d.id);
+  };
+
   // Add product to Firestore
   const handleAddProduct = async () => {
     if (!productData) return;
@@ -140,38 +146,34 @@ export default function BarcodeProductImport() {
       }
 
       const slug = productData.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-      
-      await setDoc(doc(db, COLLECTIONS.PRODUCTS, productData.barcode), {
-        name: productData.name,
-        slug,
-        category: productData.category,
-        subcategory: "",
-        price: 0, // To be set manually
-        mrp: 0, // To be set manually
-        unit: "pcs",
-        description: productData.description,
-        brand: productData.brand,
-        gstRate: 5,
-        barcode: productData.barcode,
-        tags: [],
-        imageUrls: productData.imageUrl ? [productData.imageUrl] : [],
-        inStock: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      const skuId = productData.barcode;
 
-      // Initialize inventory
-      await setDoc(doc(db, COLLECTIONS.INVENTORY, productData.barcode), {
-        skuId: productData.barcode,
-        quantity: 0,
-        reserved: 0,
-        available: 0,
-        lowStockThreshold: 10,
-        updatedBy: "barcode-import",
-        updatedAt: serverTimestamp(),
-      });
+      const [activeStores] = await Promise.all([
+        getActiveStoreIds(),
+        setDoc(doc(db, COLLECTIONS.PRODUCTS, skuId), {
+          name: productData.name, slug,
+          category: productData.category, subcategory: "",
+          price: 0, mrp: 0, unit: "pcs",
+          description: productData.description, brand: productData.brand,
+          gstRate: 5, barcode: skuId, tags: [],
+          imageUrls: productData.imageUrl ? [productData.imageUrl] : [],
+          inStock: true,
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+        }),
+      ]);
 
-      toast.success("Product added! Please update price in SKU Management");
+      // Create per-store inventory docs with composite key {storeId}_{skuId}
+      const batch = writeBatch(db);
+      activeStores.forEach(storeId => {
+        batch.set(doc(db, COLLECTIONS.INVENTORY, `${storeId}_${skuId}`), {
+          skuId, storeId, quantity: 0, reserved: 0, available: 0,
+          lowStockThreshold: 10, updatedBy: "barcode-import",
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+
+      toast.success("Product added! Set stock levels in Inventory for each store.");
       setProductData(null);
       setBarcode("");
     } catch (error: any) {
@@ -195,80 +197,52 @@ export default function BarcodeProductImport() {
     setImportResults([]);
     const results: ImportResult[] = [];
 
+    // Fetch active stores once for the entire bulk operation
+    const activeStores = await getActiveStoreIds();
+
     for (const code of barcodes) {
       try {
         // Check if exists
         const existingDoc = await getDoc(doc(db, COLLECTIONS.PRODUCTS, code));
         if (existingDoc.exists()) {
-          results.push({
-            barcode: code,
-            name: existingDoc.data().name,
-            status: 'exists',
-            message: 'Already exists'
-          });
+          results.push({ barcode: code, name: existingDoc.data().name, status: 'exists', message: 'Already exists' });
           continue;
         }
 
         // Fetch from API
         const data = await fetchProductByBarcode(code);
         if (!data) {
-          results.push({
-            barcode: code,
-            name: 'Unknown',
-            status: 'error',
-            message: 'Not found in database'
-          });
+          results.push({ barcode: code, name: 'Unknown', status: 'error', message: 'Not found in database' });
           continue;
         }
 
-        // Add to Firestore
+        // Add product doc
         const slug = data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-        
         await setDoc(doc(db, COLLECTIONS.PRODUCTS, code), {
-          name: data.name,
-          slug,
-          category: data.category,
-          subcategory: "",
-          price: 0,
-          mrp: 0,
-          unit: "pcs",
-          description: data.description,
-          brand: data.brand,
-          gstRate: 5,
-          barcode: code,
-          tags: [],
+          name: data.name, slug, category: data.category, subcategory: "",
+          price: 0, mrp: 0, unit: "pcs", description: data.description,
+          brand: data.brand, gstRate: 5, barcode: code, tags: [],
           imageUrls: data.imageUrl ? [data.imageUrl] : [],
-          inStock: true,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          inStock: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         });
 
-        await setDoc(doc(db, COLLECTIONS.INVENTORY, code), {
-          skuId: code,
-          quantity: 0,
-          reserved: 0,
-          available: 0,
-          lowStockThreshold: 10,
-          updatedBy: "bulk-barcode-import",
-          updatedAt: serverTimestamp(),
+        // Create per-store inventory docs with composite key {storeId}_{skuId}
+        const batch = writeBatch(db);
+        activeStores.forEach(storeId => {
+          batch.set(doc(db, COLLECTIONS.INVENTORY, `${storeId}_${code}`), {
+            skuId: code, storeId, quantity: 0, reserved: 0, available: 0,
+            lowStockThreshold: 10, updatedBy: "bulk-barcode-import",
+            updatedAt: serverTimestamp(),
+          });
         });
+        await batch.commit();
 
-        results.push({
-          barcode: code,
-          name: data.name,
-          status: 'success',
-          message: 'Imported successfully'
-        });
+        results.push({ barcode: code, name: data.name, status: 'success', message: 'Imported successfully' });
 
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error: any) {
-        results.push({
-          barcode: code,
-          name: 'Error',
-          status: 'error',
-          message: error.message
-        });
+        results.push({ barcode: code, name: 'Error', status: 'error', message: error.message });
       }
     }
 

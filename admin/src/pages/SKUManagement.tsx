@@ -186,9 +186,16 @@ export default function SKUManagement() {
         const toastId = toast.loading(`Importing ${rows.length} products...`);
         let success = 0, failed = 0;
 
-        // Each product = 2 writes (product + inventory).
-        // Firestore batch limit = 500 ops → 250 products per batch.
-        const CHUNK = 250;
+        // Fetch active stores once — inventory is store-scoped
+        const storesSnap = await getDocs(
+          query(collection(db, COLLECTIONS.STORES), where("isActive", "==", true))
+        );
+        const activeStores = storesSnap.docs.map(d => d.id);
+        const storeCount = Math.max(1, activeStores.length);
+
+        // Each product = 1 product write + storeCount inventory writes
+        // Firestore batch limit = 500 ops → chunk accordingly
+        const CHUNK = Math.floor(500 / (1 + storeCount));
         for (let i = 0; i < rows.length; i += CHUNK) {
           const chunk = rows.slice(i, i + CHUNK);
           const batch = writeBatch(db);
@@ -213,11 +220,18 @@ export default function SKUManagement() {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
               });
-              batch.set(doc(db, COLLECTIONS.INVENTORY, newRef.id), {
-                skuId: newRef.id, quantity: parseInt(row.quantity) || 0,
-                reserved: 0, available: parseInt(row.quantity) || 0,
-                lowStockThreshold: 10, updatedBy: "csv-import",
-                updatedAt: serverTimestamp(),
+              // Create one inventory doc per store with composite key {storeId}_{skuId}
+              activeStores.forEach(storeId => {
+                batch.set(doc(db, COLLECTIONS.INVENTORY, `${storeId}_${newRef.id}`), {
+                  skuId: newRef.id,
+                  storeId,
+                  quantity: parseInt(row.quantity) || 0,
+                  reserved: 0,
+                  available: parseInt(row.quantity) || 0,
+                  lowStockThreshold: 10,
+                  updatedBy: "csv-import",
+                  updatedAt: serverTimestamp(),
+                });
               });
               success++;
             });
