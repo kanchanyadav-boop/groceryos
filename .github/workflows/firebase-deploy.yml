@@ -70,11 +70,21 @@ jobs:
 
       - name: Set Razorpay Config
         run: |
+          firebase experiments:enable legacyRuntimeConfigCommands
           firebase functions:config:set \
             razorpay.key_id="rzp_test_RrTWQ4YTkNkbU5" \
             razorpay.key_secret="L4con8FCTF4BOVNvdSiKk78u" \
             razorpay.webhook_secret="test_webhook_secret" \
             --project groceryos-61a05 || echo "Config already set or failed - continuing..."
+
+      - name: Set Twilio Config
+        run: |
+          firebase experiments:enable legacyRuntimeConfigCommands
+          firebase functions:config:set \
+            twilio.account_sid="${{ secrets.TWILIO_ACCOUNT_SID }}" \
+            twilio.auth_token="${{ secrets.TWILIO_AUTH_TOKEN }}" \
+            twilio.verify_service_sid="${{ secrets.TWILIO_VERIFY_SERVICE_SID }}" \
+            --project groceryos-61a05
 
       - name: Deploy Cloud Functions
         run: |
@@ -83,7 +93,7 @@ jobs:
       - name: Set IAM invoker policy for HTTP/callable functions
         run: |
           gcloud auth activate-service-account --key-file=$HOME/gcloud-key.json
-          for fn in signInWithPhone razorpayWebhook placeOrder verifyPayment autoAssignAgent setStaffRole; do
+          for fn in signInWithPhone razorpayWebhook placeOrder verifyPayment autoAssignAgent setStaffRole sendOtp verifyOtp; do
             gcloud functions add-iam-policy-binding $fn \
               --region=us-central1 \
               --project=groceryos-61a05 \
