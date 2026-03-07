@@ -1,40 +1,76 @@
 // customer/src/screens/Cart/CartCheckout.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, Alert, ActivityIndicator, Image,
 } from "react-native";
 import { useCartStore, useAuthStore, useAppStore } from "../../store";
-import { APP_CONFIG, RAZORPAY_KEY_ID } from "../../shared/config";
+import { APP_CONFIG, COLLECTIONS, RAZORPAY_KEY_ID } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import app from "../../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import app, { auth, db, functions } from "../../lib/firebase";
 import { router } from "expo-router";
 import { format, addDays } from "date-fns";
+import { SlotConfig, DeliverySlotsConfig } from "../../shared/types";
 
-// Initialized once at module level — not recreated on every render or button press
-const functions = getFunctions(app);
+// functions imported from ../../lib/firebase — shared instance with auth
 
 // After: npx expo install react-native-razorpay  →  uncomment below
 // import RazorpayCheckout from "react-native-razorpay";
 
-const SLOTS = ["AM", "PM"] as const;
+const FALLBACK_SLOTS: DeliverySlotsConfig = {
+  slots: [
+    { id: "AM", name: "Morning", emoji: "🌅", timeRange: "9am – 1pm", cutoffHour: 7, capacityPerDay: 50, isActive: true },
+    { id: "PM", name: "Evening", emoji: "🌇", timeRange: "2pm – 7pm", cutoffHour: 12, capacityPerDay: 50, isActive: true },
+  ],
+  advanceDays: 3,
+};
+
+/** Returns only the slots a customer can actually book for a given date. */
+function getAvailableSlotsForDate(date: string, config: DeliverySlotsConfig): SlotConfig[] {
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const isToday = date === todayStr;
+  const currentHour = new Date().getHours();
+  return config.slots.filter(slot => {
+    if (!slot.isActive) return false;
+    // For today, hide slots whose booking cutoff has passed
+    if (isToday && currentHour >= slot.cutoffHour) return false;
+    return true;
+  });
+}
 
 export default function CartCheckout() {
-  const { items, updateQty, clearCart } = useCartStore();
-  const { user, firebaseUid } = useAuthStore();
+  const { items, updateQty, clearCart, getItemCount } = useCartStore();
+  const { user, firebaseUid, isLoggedIn } = useAuthStore();
   const { selectedAddress, selectedSlot, setSelectedSlot } = useAppStore();
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "cod">("upi");
+  const [paymentMethod, setPaymentMethod] = useState<"cod">("cod");
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [slotConfig, setSlotConfig] = useState<DeliverySlotsConfig>(FALLBACK_SLOTS);
+
+  // Fetch admin-defined slot config from Firestore
+  useEffect(() => {
+    getDoc(doc(db, COLLECTIONS.SETTINGS, "deliverySlots"))
+      .then(snap => { if (snap.exists()) setSlotConfig(snap.data() as DeliverySlotsConfig); })
+      .catch(() => { }); // keep fallback on error
+  }, []);
+
+  // Clear selected slot when switching dates if it's no longer available
+  useEffect(() => {
+    if (!selectedSlot) return;
+    const available = getAvailableSlotsForDate(selectedDate, slotConfig);
+    if (!available.find(s => s.id === selectedSlot.slot)) {
+      setSelectedSlot(null);
+    }
+  }, [selectedDate, slotConfig]);
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const deliveryFee = subtotal >= APP_CONFIG.freeDeliveryAbove ? 0 : APP_CONFIG.deliveryFee;
   const total = subtotal + deliveryFee;
 
-  // Memoized — new Date() called once per mount, not on every render
   const deliveryDates = useMemo(
-    () => Array.from({ length: 3 }, (_, i) => format(addDays(new Date(), i), "yyyy-MM-dd")),
-    []
+    () => Array.from({ length: slotConfig.advanceDays }, (_, i) => format(addDays(new Date(), i), "yyyy-MM-dd")),
+    [slotConfig.advanceDays]
   );
 
   const placeOrder = async () => {
@@ -45,15 +81,15 @@ export default function CartCheckout() {
         "Please login to place your order. Your cart will be saved.",
         [
           { text: "Cancel", style: "cancel" },
-          { 
-            text: "Login", 
+          {
+            text: "Login",
             onPress: () => router.push("/(auth)/login")
           },
         ]
       );
       return;
     }
-    
+
     if (!selectedAddress) {
       Alert.alert(
         "No address selected",
@@ -72,8 +108,19 @@ export default function CartCheckout() {
 
     setLoading(true);
     try {
-      const placeOrderFn = httpsCallable(functions, "placeOrder");
+      // ── Token refresh ─────────────────────────────────────────────────────────
+      // Force-refresh the Firebase ID token before every sensitive CF call.
+      // This guarantees the SDK attaches a valid Bearer token even if the cached
+      // token is stale or the auth state was restored from AsyncStorage.
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert("Session expired", "Your session has expired. Please log in again.");
+        router.replace("/(auth)/login");
+        return;
+      }
+      await currentUser.getIdToken(/* forceRefresh= */ true);
 
+      const placeOrderFn = httpsCallable(functions, "placeOrder");
       const result = await placeOrderFn({
         items: items.map(i => ({ skuId: i.skuId, qty: i.qty })),
         deliveryAddress: selectedAddress,
@@ -127,7 +174,7 @@ export default function CartCheckout() {
       Alert.alert(
         "Install Razorpay",
         "Run: npx expo install react-native-razorpay\nThen uncomment the payment block in CartCheckout.tsx.",
-        [{ text: "OK", onPress: () => { clearCart(); router.replace({ pathname: "/order-success", params: { orderId, total: String(total), itemCount: String(items.reduce((a,i)=>a+i.qty,0)) } }); } }]
+        [{ text: "OK", onPress: () => { clearCart(); router.replace({ pathname: "/order-success", params: { orderId, total: String(total), itemCount: String(items.reduce((a, i) => a + i.qty, 0)) } }); } }]
       );
 
     } catch (err: any) {
@@ -143,6 +190,26 @@ export default function CartCheckout() {
         <Text style={styles.emptyTitle}>Your cart is empty</Text>
         <TouchableOpacity style={styles.shopBtn} onPress={() => router.back()}>
           <Text style={styles.shopBtnText}>Start Shopping</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!isLoggedIn) {
+    const cartCount = getItemCount();
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyEmoji}>🔐</Text>
+        <Text style={styles.loginGateTitle}>Login to continue</Text>
+        <Text style={styles.loginGateSub}>
+          {cartCount} item{cartCount !== 1 ? "s" : ""} saved in your cart.{"\n"}
+          Login to place your order.
+        </Text>
+        <TouchableOpacity style={styles.shopBtn} onPress={() => router.push("/(auth)/login")}>
+          <Text style={styles.shopBtnText}>Login / Sign up</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={styles.loginGateBack}>
+          <Text style={styles.loginGateBackText}>← Continue browsing</Text>
         </TouchableOpacity>
       </View>
     );
@@ -226,54 +293,89 @@ export default function CartCheckout() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <View style={styles.slotRow}>
-          {SLOTS.map(slot => {
-            const active = selectedSlot?.slot === slot && selectedSlot?.date === selectedDate;
+        {(() => {
+          const available = getAvailableSlotsForDate(selectedDate, slotConfig);
+          if (available.length === 0) {
             return (
-              <TouchableOpacity
-                key={slot}
-                style={[styles.slotChip, active && styles.slotChipActive]}
-                onPress={() => setSelectedSlot({ date: selectedDate, slot })}
-              >
-                <Text style={styles.slotEmoji}>{slot === "AM" ? "🌅" : "🌇"}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.slotLabel, active && styles.slotLabelActive]}>
-                    {slot === "AM" ? "Morning" : "Evening"}
-                  </Text>
-                  <Text style={styles.slotTime}>{slot === "AM" ? "9am – 1pm" : "2pm – 7pm"}</Text>
-                </View>
-                {active && <Text style={styles.slotCheck}>✓</Text>}
-              </TouchableOpacity>
+              <View style={styles.noSlotsBox}>
+                <Text style={styles.noSlotsText}>
+                  No slots available for today — all booking windows have passed.
+                  {"\n"}Please select a future date.
+                </Text>
+              </View>
             );
-          })}
-        </View>
+          }
+          return (
+            <View style={styles.slotRow}>
+              {available.map(slot => {
+                const active = selectedSlot?.slot === slot.id && selectedSlot?.date === selectedDate;
+                return (
+                  <TouchableOpacity
+                    key={slot.id}
+                    style={[styles.slotChip, active && styles.slotChipActive]}
+                    onPress={() => setSelectedSlot({ date: selectedDate, slot: slot.id })}
+                  >
+                    <Text style={styles.slotEmoji}>{slot.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.slotLabel, active && styles.slotLabelActive]}>
+                        {slot.name}
+                      </Text>
+                      <Text style={styles.slotTime}>{slot.timeRange}</Text>
+                    </View>
+                    {active && <Text style={styles.slotCheck}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          );
+        })()}
       </View>
 
       {/* Payment Method */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Method</Text>
-        {(["upi", "card", "cod"] as const).map(method => (
-          <TouchableOpacity
-            key={method}
-            style={[styles.payOption, paymentMethod === method && styles.payOptionActive]}
-            onPress={() => setPaymentMethod(method)}
-          >
-            <Text style={styles.payIcon}>
-              {method === "upi" ? "📱" : method === "card" ? "💳" : "💵"}
-            </Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.payLabel, paymentMethod === method && styles.payLabelActive]}>
-                {method === "upi" ? "UPI / Wallet" : method === "card" ? "Credit / Debit Card" : "Cash on Delivery"}
+        {(["upi", "card", "cod"] as const).map(method => {
+          const isDisabled = method !== "cod";
+          return (
+            <TouchableOpacity
+              key={method}
+              style={[
+                styles.payOption,
+                paymentMethod === method && styles.payOptionActive,
+                isDisabled && styles.payOptionDisabled,
+              ]}
+              onPress={() => !isDisabled && setPaymentMethod(method as "cod")}
+              activeOpacity={isDisabled ? 1 : 0.7}
+            >
+              <Text style={[styles.payIcon, isDisabled && { opacity: 0.4 }]}>
+                {method === "upi" ? "📱" : method === "card" ? "💳" : "💵"}
               </Text>
-              <Text style={styles.paySub}>
-                {method === "upi" ? "GPay, PhonePe, Paytm..." : method === "card" ? "Visa, Mastercard, RuPay" : "Pay when you receive"}
-              </Text>
-            </View>
-            <View style={[styles.radio, paymentMethod === method && styles.radioActive]}>
-              {paymentMethod === method && <View style={styles.radioDot} />}
-            </View>
-          </TouchableOpacity>
-        ))}
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  styles.payLabel,
+                  paymentMethod === method && styles.payLabelActive,
+                  isDisabled && styles.payLabelDisabled,
+                ]}>
+                  {method === "upi" ? "UPI / Wallet" : method === "card" ? "Credit / Debit Card" : "Cash on Delivery"}
+                </Text>
+                <Text style={styles.paySub}>
+                  {isDisabled
+                    ? "Coming soon"
+                    : method === "cod" ? "Pay when you receive" : ""}
+                </Text>
+              </View>
+              {isDisabled ? (
+                <View style={styles.comingSoonBadge}>
+                  <Text style={styles.comingSoonText}>Soon</Text>
+                </View>
+              ) : (
+                <View style={[styles.radio, paymentMethod === method && styles.radioActive]}>
+                  {paymentMethod === method && <View style={styles.radioDot} />}
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Order Summary */}
@@ -308,9 +410,9 @@ export default function CartCheckout() {
           {loading
             ? <ActivityIndicator color="#000" />
             : <>
-                <Text style={styles.placeBtnText}>Place Order</Text>
-                <Text style={styles.placeBtnAmt}> · ₹{total}</Text>
-              </>
+              <Text style={styles.placeBtnText}>Place Order</Text>
+              <Text style={styles.placeBtnAmt}> · ₹{total}</Text>
+            </>
           }
         </TouchableOpacity>
         <Text style={styles.disclaimer}>By placing this order you agree to our Terms of Service</Text>
@@ -326,6 +428,10 @@ const styles = StyleSheet.create({
   emptyTitle: { color: "#8A8A9A", fontSize: 16, marginBottom: 24 },
   shopBtn: { backgroundColor: "#2ECC71", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
   shopBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  loginGateTitle: { color: "#fff", fontSize: 22, fontWeight: "900", marginBottom: 10 },
+  loginGateSub: { color: "#8A8A9A", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 28 },
+  loginGateBack: { marginTop: 16, paddingVertical: 8 },
+  loginGateBackText: { color: "#8A8A9A", fontSize: 14 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
   backArrow: { color: "#fff", fontSize: 22, marginRight: 12 },
   headerTitle: { flex: 1, color: "#fff", fontSize: 20, fontWeight: "900" },
@@ -364,12 +470,18 @@ const styles = StyleSheet.create({
   slotLabelActive: { color: "#2ECC71" },
   slotTime: { color: "#4E4E60", fontSize: 12, marginTop: 2 },
   slotCheck: { color: "#2ECC71", fontWeight: "900", fontSize: 16 },
+  noSlotsBox: { backgroundColor: "#1E2028", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#262830" },
+  noSlotsText: { color: "#7A7A8E", fontSize: 13, lineHeight: 20, textAlign: "center" },
   payOption: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#1E2028", borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: "#262830" },
   payOptionActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7110" },
+  payOptionDisabled: { opacity: 0.5 },
   payIcon: { fontSize: 22 },
   payLabel: { color: "#7A7A8E", fontWeight: "700", fontSize: 14 },
   payLabelActive: { color: "#F0F0F5" },
+  payLabelDisabled: { color: "#4E4E60" },
   paySub: { color: "#4E4E60", fontSize: 11, marginTop: 2 },
+  comingSoonBadge: { backgroundColor: "#2D2D40", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  comingSoonText: { color: "#4E4E60", fontSize: 10, fontWeight: "700" },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#2D3D55", alignItems: "center", justifyContent: "center" },
   radioActive: { borderColor: "#2ECC71" },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#2ECC71" },

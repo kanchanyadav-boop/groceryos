@@ -153,12 +153,16 @@ async function sendSMS(phone: string, otp: string): Promise<void> {
 // 1. ORDER PLACEMENT — reserve inventory + create Razorpay order
 // ═══════════════════════════════════════════════════════════════════════════════
 export const placeOrder = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required");
+  if (!context.auth) {
+    functions.logger.warn("placeOrder called without auth context", { data });
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required to place an order.");
+  }
 
-  const { items, deliveryAddress, deliverySlot, paymentMethod } = data;
   const userId = context.auth.uid;
+  const { items, deliveryAddress, deliverySlot, paymentMethod } = data;
+  functions.logger.info("placeOrder invoked", { userId, itemCount: items?.length });
 
-  // Validate + reserve inventory in a transaction
+
   try {
     const result = await db.runTransaction(async (txn) => {
       let subtotal = 0;

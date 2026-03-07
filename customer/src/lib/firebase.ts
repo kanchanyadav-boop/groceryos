@@ -3,6 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FIREBASE_CONFIG } from "../shared/config";
 
@@ -25,4 +26,7 @@ export const auth = (() => {
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+// Shared functions instance — uses the same app so auth token is auto-attached
+export const functions = getFunctions(app);
 export default app;
+
