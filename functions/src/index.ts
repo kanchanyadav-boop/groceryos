@@ -16,108 +16,79 @@ const db = admin.firestore();
 // In dev, omit msg91 config — OTP is logged to Cloud Functions console instead.
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 0a. SEND OTP — generate OTP, persist with expiry, dispatch SMS
+// 0a. SEND OTP — trigger Twilio Verify SMS
 //     No auth required (caller has no session yet).
 // ═══════════════════════════════════════════════════════════════════════════════
 export const sendOtp = functions.https.onCall(async (data) => {
   const { phone } = data;
   if (!phone || typeof phone !== "string") {
-    throw new functions.https.HttpsError("invalid-argument", "Phone number required");
+    throw new functions.https.HttpsError("invalid-argument", "A valid phone number is required.");
   }
 
-  const normalized = phone.startsWith("+91") ? phone : `+91${phone.replace(/\D/g, "")}`;
-  if (normalized.length !== 13) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid Indian phone number");
+  // Normalise to E.164 (e.g. +919876543210)
+  const e164 = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`;
+
+  const cfg = functions.config().twilio;
+  if (!cfg?.account_sid || !cfg?.auth_token || !cfg?.verify_service_sid) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Twilio configuration is missing."
+    );
   }
 
-  const phoneDocId = normalized.replace(/\+/g, "").replace(/\s/g, "");
-  const otpRef = db.collection("otpVerifications").doc(phoneDocId);
-
-  // Rate limit: max 5 sends per hour per number
-  const existing = await otpRef.get();
-  if (existing.exists) {
-    const d = existing.data()!;
-    const sendCount: number = d.sendCount || 0;
-    const windowStart: number = d.windowStart || 0;
-    const now = Date.now();
-    if (now - windowStart < 60 * 60 * 1000 && sendCount >= 5) {
-      throw new functions.https.HttpsError("resource-exhausted", "Too many OTP requests. Please try again after an hour.");
-    }
+  try {
+    const twilio = require("twilio")(cfg.account_sid, cfg.auth_token);
+    await twilio.verify.v2
+      .services(cfg.verify_service_sid)
+      .verifications.create({ to: e164, channel: "sms" });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Twilio sendOtp error:", err);
+    throw new functions.https.HttpsError("internal", err.message || "Failed to send OTP.");
   }
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-  const prev = existing.exists ? existing.data()! : {};
-  const windowStart = (prev.windowStart && Date.now() - prev.windowStart < 3600000)
-    ? prev.windowStart
-    : Date.now();
-
-  await otpRef.set({
-    otp,
-    expiresAt,
-    attempts: 0,
-    sendCount: (prev.windowStart && Date.now() - prev.windowStart < 3600000)
-      ? (prev.sendCount || 0) + 1 : 1,
-    windowStart,
-    phone: normalized,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  await sendSMS(normalized, otp);
-  return { success: true };
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 0b. VERIFY OTP — validate OTP, issue Firebase custom token
+// 0b. VERIFY OTP — check Twilio Verify code, return Firebase custom token
 //     No auth required (caller has no session yet).
 // ═══════════════════════════════════════════════════════════════════════════════
 export const verifyOtp = functions.https.onCall(async (data) => {
   const { phone, otp } = data;
   if (!phone || !otp) {
-    throw new functions.https.HttpsError("invalid-argument", "Phone and OTP required");
+    throw new functions.https.HttpsError("invalid-argument", "Phone and OTP are required.");
   }
 
-  const normalized = phone.startsWith("+91") ? phone : `+91${phone.replace(/\D/g, "")}`;
-  const phoneDocId = normalized.replace(/\+/g, "").replace(/\s/g, "");
+  const e164 = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`;
 
-  const otpRef = db.collection("otpVerifications").doc(phoneDocId);
-  const otpDoc = await otpRef.get();
-
-  if (!otpDoc.exists) {
-    throw new functions.https.HttpsError("not-found", "OTP not found. Please request a new one.");
+  const cfg = functions.config().twilio;
+  if (!cfg?.account_sid || !cfg?.auth_token || !cfg?.verify_service_sid) {
+    throw new functions.https.HttpsError("failed-precondition", "Twilio configuration is missing.");
   }
 
-  const d = otpDoc.data()!;
+  try {
+    const twilio = require("twilio")(cfg.account_sid, cfg.auth_token);
+    const check = await twilio.verify.v2
+      .services(cfg.verify_service_sid)
+      .verificationChecks.create({ to: e164, code: String(otp) });
 
-  if (Date.now() > d.expiresAt) {
-    await otpRef.delete();
-    throw new functions.https.HttpsError("deadline-exceeded", "OTP expired. Please request a new one.");
+    if (check.status !== "approved") {
+      throw new functions.https.HttpsError("permission-denied", "Incorrect or expired OTP.");
+    }
+  } catch (err: any) {
+    if (err instanceof functions.https.HttpsError) throw err;
+    console.error("Twilio verifyOtp error:", err);
+    throw new functions.https.HttpsError("internal", err.message || "OTP verification failed.");
   }
 
-  if (d.attempts >= 3) {
-    await otpRef.delete();
-    throw new functions.https.HttpsError("permission-denied", "Too many incorrect attempts. Please request a new OTP.");
-  }
-
-  if (d.otp !== otp) {
-    await otpRef.update({ attempts: admin.firestore.FieldValue.increment(1) });
-    const remaining = 3 - (d.attempts + 1);
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      remaining > 0 ? `Incorrect OTP. ${remaining} attempt(s) remaining.` : "Incorrect OTP."
-    );
-  }
-
-  // OTP correct — clean up and create user
-  await otpRef.delete();
+  // OTP approved — phoneDocId is the stable Firestore user doc ID
+  const phoneDocId = e164.replace(/\D/g, ""); // e.g. "919876543210"
 
   const userRef = db.collection("users").doc(phoneDocId);
   const userDoc = await userRef.get();
   if (!userDoc.exists) {
     await userRef.set({
       id: phoneDocId,
-      phone: normalized,
+      phone: e164,
       name: "",
       addresses: [],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -126,7 +97,6 @@ export const verifyOtp = functions.https.onCall(async (data) => {
     await userRef.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
   }
 
-  // Custom token — uid = phoneDocId, consistent with placeOrder's context.auth.uid
   const customToken = await admin.auth().createCustomToken(phoneDocId);
   return { customToken, userId: phoneDocId, isNewUser: !userDoc.exists };
 });
@@ -626,91 +596,3 @@ async function sendOrderNotification(userId: string, status: string, orderId: st
     console.error("FCM notification failed:", err);
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 10. SEND OTP — trigger Twilio Verify SMS to the given phone number
-// ═══════════════════════════════════════════════════════════════════════════════
-export const sendOtp = functions.https.onCall(async (data) => {
-  const { phone } = data;
-  if (!phone || typeof phone !== "string") {
-    throw new functions.https.HttpsError("invalid-argument", "A valid phone number is required.");
-  }
-
-  // Normalise: ensure E.164 format (e.g. +919876543210)
-  const e164 = phone.startsWith("+") ? phone : `+${phone}`;
-
-  const cfg = functions.config().twilio;
-  if (!cfg?.account_sid || !cfg?.auth_token || !cfg?.verify_service_sid) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "Twilio configuration is missing. Set twilio.account_sid, twilio.auth_token, and twilio.verify_service_sid."
-    );
-  }
-
-  try {
-    const twilio = require("twilio")(cfg.account_sid, cfg.auth_token);
-    await twilio.verify.v2
-      .services(cfg.verify_service_sid)
-      .verifications.create({ to: e164, channel: "sms" });
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("Twilio sendOtp error:", err);
-    // Surface Twilio's own error message for debugging
-    throw new functions.https.HttpsError("internal", err.message || "Failed to send OTP.");
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 11. VERIFY OTP — check Twilio Verify code, return Firebase custom token
-// ═══════════════════════════════════════════════════════════════════════════════
-export const verifyOtp = functions.https.onCall(async (data) => {
-  const { phone, otp } = data;
-  if (!phone || !otp) {
-    throw new functions.https.HttpsError("invalid-argument", "Phone and OTP are required.");
-  }
-
-  const e164 = phone.startsWith("+") ? phone : `+${phone}`;
-
-  const cfg = functions.config().twilio;
-  if (!cfg?.account_sid || !cfg?.auth_token || !cfg?.verify_service_sid) {
-    throw new functions.https.HttpsError("failed-precondition", "Twilio configuration is missing.");
-  }
-
-  try {
-    const twilio = require("twilio")(cfg.account_sid, cfg.auth_token);
-    const check = await twilio.verify.v2
-      .services(cfg.verify_service_sid)
-      .verificationChecks.create({ to: e164, code: String(otp) });
-
-    if (check.status !== "approved") {
-      throw new functions.https.HttpsError("permission-denied", "Incorrect or expired OTP.");
-    }
-  } catch (err: any) {
-    if (err instanceof functions.https.HttpsError) throw err;
-    console.error("Twilio verifyOtp error:", err);
-    throw new functions.https.HttpsError("internal", err.message || "OTP verification failed.");
-  }
-
-  // OTP approved — derive a stable UID from the phone number and issue a custom token
-  const uid = e164.replace(/\D/g, ""); // e.g. "919876543210"
-
-  // Upsert user document
-  const userRef = db.collection("users").doc(uid);
-  const userDoc = await userRef.get();
-  if (!userDoc.exists) {
-    await userRef.set({
-      id: uid,
-      phone: e164,
-      name: "",
-      addresses: [],
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  } else {
-    await userRef.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
-  }
-
-  const customToken = await admin.auth().createCustomToken(uid);
-  return { customToken, userId: uid, isNewUser: !userDoc.exists };
-});
-

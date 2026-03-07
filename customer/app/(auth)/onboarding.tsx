@@ -21,17 +21,21 @@ export default function Onboarding() {
       Alert.alert("Name required", "Please enter your name to continue.");
       return;
     }
-    if (!firebaseUid) return;
+    // user.id is the stable phoneDocId (e.g. "919999999999") under which
+    // OTPAuth created the Firestore user doc. firebaseUid is the anonymous
+    // Firebase UID — a different value after our UID fix.
+    const docId = user?.id || firebaseUid;
+    if (!docId) return;
 
     setLoading(true);
     try {
-      await updateDoc(doc(db, COLLECTIONS.USERS, firebaseUid), {
+      await updateDoc(doc(db, COLLECTIONS.USERS, docId), {
         name: name.trim(),
         email: email.trim() || null,
         updatedAt: serverTimestamp(),
       });
 
-      setUser({ ...user!, name: name.trim(), email: email.trim() || undefined }, firebaseUid);
+      setUser({ ...user!, name: name.trim(), email: email.trim() || undefined }, firebaseUid!);
       router.replace("/(tabs)/home");
     } catch (err: any) {
       Alert.alert("Error", err.message);
