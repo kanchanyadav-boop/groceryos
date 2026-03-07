@@ -11,7 +11,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar
 } from "recharts";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { toDate } from "../lib/utils";
+import { toDate, fmtDate } from "../lib/utils";
 import {
   ShoppingCart, Package, TrendingUp, Users, Truck,
   AlertTriangle, Clock, CheckCircle
@@ -297,7 +297,7 @@ export default function Dashboard() {
                       #{order.id?.slice(-6).toUpperCase()}
                     </span>
                     <div className="text-gray-600 text-xs mt-0.5">
-                      {order.createdAt ? format(toDate(order.createdAt)!, "hh:mm a") : "—"}
+                      {fmtDate(order.createdAt, "hh:mm a")}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-300 text-sm">

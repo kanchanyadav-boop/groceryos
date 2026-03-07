@@ -1,4 +1,5 @@
 // admin/src/lib/utils.ts
+import { format } from "date-fns";
 
 /**
  * Recursively removes undefined, null, and empty string properties from an object.
@@ -44,6 +45,21 @@ export function toDate(value: any): Date | null {
   if (typeof value.toDate === "function") return value.toDate(); // Firestore Timestamp
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Safely formats a Firestore Timestamp/ISO-string/Date using date-fns format.
+ * Returns `fallback` (default "—") when the value is null, undefined, a pending
+ * serverTimestamp() sentinel, or otherwise un-parseable.
+ */
+export function fmtDate(value: any, fmt: string, fallback = "—"): string {
+  const d = toDate(value);
+  if (!d) return fallback;
+  try {
+    return format(d, fmt);
+  } catch {
+    return fallback;
+  }
 }
 
 /**

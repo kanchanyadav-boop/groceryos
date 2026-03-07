@@ -52,11 +52,13 @@ service cloud.firestore {
 
     // ── Agents: own data + staff ────────────────────────────────────────────
     match /agents/{agentId} {
-      allow read: if isStaff() || isOwner(agentId) || isAuthenticated(); // Customers need to see agent location
-      allow write: if isOwner(agentId) || isAdmin();
-      // Restrict location update to agent themselves
-      allow update: if isOwner(agentId) &&
-                       request.resource.data.keys().hasOnly(['location', 'locationUpdatedAt', 'status', 'activeOrderId', 'fcmToken']);
+      allow read: if isAuthenticated();
+      // Staff members (anyone with a staff doc) can manage agents.
+      // isAdmin() uses custom claims which are not set; check Firestore staff doc instead.
+      allow write: if isAuthenticated() && (
+        isOwner(agentId) ||
+        exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+      );
     }
 
     // ── Payments: own + billing staff ───────────────────────────────────────

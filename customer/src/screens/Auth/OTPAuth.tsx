@@ -21,7 +21,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
-import { useAuthStore, useLoaderStore, useCartStore } from "../../store";
+import { useAuthStore, useLoaderStore, useCartStore, useAppStore } from "../../store";
 import { User } from "../../shared/types";
 import { router } from "expo-router";
 
@@ -97,9 +97,10 @@ export default function OTPAuth() {
         createdAt: profileData.createdAt || new Date().toISOString(),
       };
 
-      // Step 4: Persist to Zustand + clear stale cart
+      // Step 4: Persist to Zustand + clear stale cart and address
       setUser(userProfile, uid);
       useCartStore.getState().clearCart();
+      useAppStore.setState({ selectedAddress: null, selectedSlot: null });
 
       // Step 5: Navigate — new users → onboarding, returning → home
       router.replace(userProfile.name ? "/(tabs)/home" : "/(auth)/onboarding");

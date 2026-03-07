@@ -5,7 +5,7 @@ import { db } from "../lib/firebase";
 import { Payment, Order } from "../../shared/types";
 import { COLLECTIONS, APP_CONFIG } from "../../shared/config";
 import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
-import { toDate } from "../lib/utils";
+import { toDate, fmtDate } from "../lib/utils";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -79,7 +79,7 @@ export default function Billing() {
   // ── Daily chart data (O(n) via Map, not O(n²) find-in-array) ──────────────
   const dailyData = Object.values(
     orders.reduce((acc, o) => {
-      const day = o.createdAt ? format(toDate(o.createdAt)!, "dd MMM") : "—";
+      const day = fmtDate(o.createdAt, "dd MMM");
       if (!acc[day]) acc[day] = { day, revenue: 0, orders: 0 };
       acc[day].revenue += o.totalAmount;
       acc[day].orders += 1;
@@ -133,7 +133,7 @@ export default function Billing() {
         `₹${p.amount}`,
         p.method.toUpperCase(),
         p.status,
-        p.createdAt ? format(toDate(p.createdAt)!, "dd/MM/yy") : "—",
+        fmtDate(p.createdAt, "dd/MM/yy"),
       ]),
       headStyles: { fillColor: [59, 130, 246] },
       styles: { fontSize: 8 },
@@ -147,7 +147,7 @@ export default function Billing() {
     const data = payments.map(p => ({
       "Payment ID": p.id, "Order ID": p.orderId, "Amount": p.amount,
       "Method": p.method, "Status": p.status,
-      "Date": p.createdAt ? format(toDate(p.createdAt)!, "dd/MM/yyyy") : "",
+      "Date": fmtDate(p.createdAt, "dd/MM/yyyy", ""),
     }));
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: "text/csv" });
@@ -256,7 +256,7 @@ export default function Billing() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500 text-xs">
-                  {p.createdAt ? format(toDate(p.createdAt)!, "dd MMM, hh:mm a") : "—"}
+                  {fmtDate(p.createdAt, "dd MMM, hh:mm a")}
                 </td>
               </tr>
             ))}

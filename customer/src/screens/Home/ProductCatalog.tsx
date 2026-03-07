@@ -296,6 +296,7 @@ export default function ProductCatalog() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.chipScroll}
         contentContainerStyle={styles.chipStrip}
       >
         {CATEGORY_LIST.map(cat => (
@@ -431,9 +432,10 @@ const styles = StyleSheet.create({
   floatingCartText: { color: "#000", fontWeight: "900", fontSize: 14, letterSpacing: 0.3 },
 
   // Category chip strip
-  chipStrip: { paddingHorizontal: 16, paddingBottom: 10, flexDirection: "row", alignItems: "center" },
-  chip: { backgroundColor: "#1E2028", borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: "#2ECC7130", marginRight: 8, flexShrink: 0 },
-  chipText: { color: "#C8C8D8", fontSize: 12, fontWeight: "600" },
+  chipScroll: { height: 44, marginBottom: 4 },
+  chipStrip: { paddingHorizontal: 16, paddingRight: 8, alignItems: "center" },
+  chip: { backgroundColor: "#1E2028", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: "#2ECC7130", marginRight: 8 },
+  chipText: { color: "#C8C8D8", fontSize: 13, fontWeight: "600" },
 
   // Skeleton
   skeletonCard: { width: CARD_WIDTH, backgroundColor: "#16181F", borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "#262830" },
