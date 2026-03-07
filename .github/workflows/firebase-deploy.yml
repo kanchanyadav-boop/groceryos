@@ -68,23 +68,15 @@ jobs:
         run: |
           firebase deploy --only storage --project groceryos-61a05
 
-      - name: Set Razorpay Config
+      - name: Write functions .env
         run: |
-          firebase experiments:enable legacyRuntimeConfigCommands
-          firebase functions:config:set \
-            razorpay.key_id="rzp_test_RrTWQ4YTkNkbU5" \
-            razorpay.key_secret="L4con8FCTF4BOVNvdSiKk78u" \
-            razorpay.webhook_secret="test_webhook_secret" \
-            --project groceryos-61a05 || echo "Config already set or failed - continuing..."
-
-      - name: Set Twilio Config
-        run: |
-          firebase experiments:enable legacyRuntimeConfigCommands
-          firebase functions:config:set \
-            twilio.account_sid="${{ secrets.TWILIO_ACCOUNT_SID }}" \
-            twilio.auth_token="${{ secrets.TWILIO_AUTH_TOKEN }}" \
-            twilio.verify_service_sid="${{ secrets.TWILIO_VERIFY_SERVICE_SID }}" \
-            --project groceryos-61a05
+          cat > functions/.env << 'EOF'
+          TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_VERIFY_SERVICE_SID=${{ secrets.TWILIO_VERIFY_SERVICE_SID }}
+          EOF
+          # Strip leading spaces from heredoc
+          sed -i 's/^ *//' functions/.env
 
       - name: Deploy Cloud Functions
         run: |
