@@ -5,6 +5,7 @@ import { db } from "../lib/firebase";
 import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../../shared/config";
 import { Store } from "../../../shared/types";
+import { cleanFirestoreData } from "../lib/utils";
 import { Store as StoreIcon, MapPin, Phone, Mail, Clock, Plus, Edit2, Trash2, X } from "lucide-react";
 
 export default function StoreManagement() {
@@ -103,19 +104,22 @@ export default function StoreManagement() {
       return;
     }
 
-    const storeData = {
+    // ── Enterprise-grade data construction ────────────────────────────────────
+    // In production-grade Firebase apps, we strictly avoid passing 'undefined' 
+    // to Firestore. We explicitly map form state to our data model.
+    const rawData = {
       name: formData.name,
       code: formData.code.toUpperCase(),
       address: {
         line1: formData.line1,
-        line2: formData.line2 || null,
+        line2: formData.line2,
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
-        location: { lat: 0, lng: 0 }, // TODO: Geocode address
+        location: { lat: 0, lng: 0 },
       },
       phone: formData.phone,
-      email: formData.email || null,
+      email: formData.email,
       serviceablePincodes: pincodes,
       isActive: formData.isActive,
       operatingHours: {
@@ -124,6 +128,8 @@ export default function StoreManagement() {
       },
       updatedAt: serverTimestamp(),
     };
+
+    const storeData = cleanFirestoreData(rawData);
 
     try {
       if (editingStore) {
@@ -245,8 +251,8 @@ export default function StoreManagement() {
 
             <div className="mt-4">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${store.isActive
-                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                  : "bg-gray-800 text-gray-500 border border-gray-700"
+                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                : "bg-gray-800 text-gray-500 border border-gray-700"
                 }`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${store.isActive ? "bg-emerald-400" : "bg-gray-500"}`}></div>
                 {store.isActive ? "Active" : "Inactive"}

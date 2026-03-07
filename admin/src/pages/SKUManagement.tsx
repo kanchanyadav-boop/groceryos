@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import { Product } from "../../shared/types";
 import { COLLECTIONS } from "../../shared/config";
 import { GROCERY_CATEGORIES, CATEGORY_LIST } from "../../shared/categories";
+import { cleanFirestoreData } from "../lib/utils";
 import { Plus, Upload, Edit, Trash2, Search, X, Package } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -113,7 +114,7 @@ export default function SKUManagement() {
       }
 
       const slug = data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-      const payload = {
+      const rawPayload = {
         ...data,
         slug,
         tags: data.tags ? data.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
@@ -121,6 +122,8 @@ export default function SKUManagement() {
         inStock: true,
         updatedAt: serverTimestamp(),
       };
+
+      const payload = cleanFirestoreData(rawPayload);
 
       if (editProduct) {
         await updateDoc(doc(db, COLLECTIONS.PRODUCTS, editProduct.id), payload);
@@ -348,8 +351,8 @@ export default function SKUManagement() {
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs font-semibold uppercase mb-1 block">Subcategory</label>
-                  <select 
-                    {...register("subcategory")} 
+                  <select
+                    {...register("subcategory")}
                     disabled={!selectedCategory}
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50"
                   >

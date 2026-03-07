@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../../shared/config";
 import { Product, User, Address, OrderItem, PaymentMethod, DeliverySlot, Store } from "../../../shared/types";
 import { findStoreByPincode } from "../../../shared/storeUtils";
+import { cleanFirestoreData } from "../lib/utils";
 import { Search, Plus, Minus, Trash2, Phone, MapPin, Calendar, CreditCard, X, Store as StoreIcon } from "lucide-react";
 
 interface CartItem extends OrderItem {
@@ -207,14 +208,15 @@ export default function CreateOrder() {
         }
 
         // Create new user document
-        const userData = {
+        const rawUserData = {
           name: customerName.trim(),
           phone: `+91${phoneNumber}`,
-          email: customerEmail.trim() || undefined,
+          email: customerEmail.trim(),
           addresses: [addressObj],
           createdAt: new Date().toISOString(),
         };
 
+        const userData = cleanFirestoreData(rawUserData);
         const userRef = await addDoc(collection(db, COLLECTIONS.USERS), userData);
 
         // Set address + store for this order
@@ -249,7 +251,7 @@ export default function CreateOrder() {
           });
 
           setSelectedAddress(addressObj);
-          
+
           // Auto-assign store based on pincode
           const store = findStoreByPincode(addressObj.pincode, stores);
           if (store) {
@@ -257,7 +259,7 @@ export default function CreateOrder() {
           } else {
             toast.error(`Pincode ${addressObj.pincode} is not serviceable`);
           }
-          
+
           toast.success("New address added!");
         } catch (error: any) {
           toast.error(`Failed to add address: ${error.message}`);
@@ -265,7 +267,7 @@ export default function CreateOrder() {
       }
       return customer.id;
     }
-    
+
     return null;
   };
 
@@ -292,7 +294,7 @@ export default function CreateOrder() {
     try {
       // Save customer first (create new or update existing)
       const userId = await saveCustomer();
-      
+
       if (!userId) {
         setSubmitting(false);
         return;
@@ -310,7 +312,7 @@ export default function CreateOrder() {
         return;
       }
 
-      const orderData = {
+      const rawOrderData = {
         userId,
         storeId: assignedStore.id,
         status: "confirmed" as const,
@@ -329,15 +331,16 @@ export default function CreateOrder() {
         paymentStatus: paymentMethod === "cod" ? "created" : "captured",
         deliveryAddress: selectedAddress,
         deliverySlot: { date: deliveryDate, slot: deliverySlot },
-        notes: notes || undefined,
+        notes: notes,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
+      const orderData = cleanFirestoreData(rawOrderData);
       const docRef = await addDoc(collection(db, COLLECTIONS.ORDERS), orderData);
-      
+
       toast.success(`Order created! ID: ${docRef.id.slice(-6).toUpperCase()}`);
-      
+
       // Reset form
       setCart([]);
       setNotes("");
@@ -374,7 +377,7 @@ export default function CreateOrder() {
               <Phone size={16} />
               Customer Details
             </h2>
-            
+
             <div className="flex gap-3 mb-4">
               <div className="flex-1 relative">
                 <input
@@ -415,11 +418,10 @@ export default function CreateOrder() {
                     {customer.addresses.map((addr) => (
                       <label
                         key={addr.id}
-                        className={`block p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedAddress?.id === addr.id
+                        className={`block p-3 rounded-lg border cursor-pointer transition-colors ${selectedAddress?.id === addr.id
                             ? "bg-emerald-500/10 border-emerald-500"
                             : "bg-gray-800 border-gray-700 hover:border-gray-600"
-                        }`}
+                          }`}
                       >
                         <input
                           type="radio"
@@ -704,11 +706,10 @@ export default function CreateOrder() {
                     <button
                       key={slot}
                       onClick={() => setDeliverySlot(slot)}
-                      className={`py-3 rounded-xl font-bold text-sm transition-colors ${
-                        deliverySlot === slot
+                      className={`py-3 rounded-xl font-bold text-sm transition-colors ${deliverySlot === slot
                           ? "bg-emerald-500 text-black"
                           : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                      }`}
+                        }`}
                     >
                       {slot === "AM" ? "Morning (8AM-12PM)" : "Evening (4PM-8PM)"}
                     </button>
@@ -729,11 +730,10 @@ export default function CreateOrder() {
               {(["cod", "upi", "card"] as PaymentMethod[]).map((method) => (
                 <label
                   key={method}
-                  className={`block p-3 rounded-xl border cursor-pointer transition-colors ${
-                    paymentMethod === method
+                  className={`block p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === method
                       ? "bg-emerald-500/10 border-emerald-500"
                       : "bg-gray-800 border-gray-700 hover:border-gray-600"
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"
