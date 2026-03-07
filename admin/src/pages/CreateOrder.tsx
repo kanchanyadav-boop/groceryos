@@ -116,6 +116,9 @@ export default function CreateOrder() {
         if (userData.addresses?.length > 0) {
           const defaultAddr = userData.addresses.find(a => a.isDefault) || userData.addresses[0];
           setSelectedAddress(defaultAddr);
+          // Auto-assign store so order can be saved without manually re-selecting address
+          const store = findStoreByPincode(defaultAddr.pincode, stores);
+          if (store) setAssignedStore(store);
         }
         toast.success("Customer found!");
       } else {
@@ -175,6 +178,46 @@ export default function CreateOrder() {
   const discount = 0;
   const totalAmount = subtotal + deliveryFee - discount;
 
+  // Save a new address for an existing customer explicitly (button-triggered)
+  const [savingAddress, setSavingAddress] = useState(false);
+  const saveNewAddress = async () => {
+    if (!customer) return;
+    if (!newAddress.line1.trim() || !newAddress.city.trim() || !newAddress.pincode.trim()) {
+      toast.error("Address line 1, city, and pincode are required");
+      return;
+    }
+    const store = findStoreByPincode(newAddress.pincode, stores);
+    if (!store) {
+      toast.error(`Pincode ${newAddress.pincode} is not serviceable`);
+      return;
+    }
+    setSavingAddress(true);
+    try {
+      const addressObj: Address = {
+        id: `addr_${Date.now()}`,
+        label: newAddress.label,
+        line1: newAddress.line1,
+        line2: newAddress.line2 || "",
+        city: newAddress.city,
+        pincode: newAddress.pincode,
+        location: { lat: 0, lng: 0 },
+        isDefault: (customer.addresses || []).length === 0,
+      };
+      const updatedAddresses = [...(customer.addresses || []), addressObj];
+      await updateDoc(doc(db, COLLECTIONS.USERS, customer.id), { addresses: updatedAddresses });
+      // Update local state so radio buttons reflect the new address immediately
+      setCustomer({ ...customer, addresses: updatedAddresses });
+      setSelectedAddress(addressObj);
+      setAssignedStore(store);
+      setShowAddressForm(false);
+      setNewAddress({ label: "Home", line1: "", line2: "", city: "", pincode: "" });
+      toast.success("Address saved!");
+    } catch (err: any) {
+      toast.error(friendlyError(err, "Failed to save address. Please try again."));
+    }
+    setSavingAddress(false);
+  };
+
   // Create or update customer
   const saveCustomer = async (): Promise<string | null> => {
     if (isNewCustomer) {
@@ -231,41 +274,6 @@ export default function CreateOrder() {
         return null;
       }
     } else if (customer) {
-      // Existing customer - check if new address needs to be added
-      if (showAddressForm && newAddress.line1.trim()) {
-        try {
-          const addressObj: Address = {
-            id: `addr_${Date.now()}`,
-            label: newAddress.label,
-            line1: newAddress.line1,
-            line2: newAddress.line2 || "",
-            city: newAddress.city,
-            pincode: newAddress.pincode,
-            location: { lat: 0, lng: 0 },
-            isDefault: false,
-          };
-
-          // Update user with new address
-          const userRef = doc(db, COLLECTIONS.USERS, customer.id);
-          await updateDoc(userRef, {
-            addresses: [...(customer.addresses || []), addressObj],
-          });
-
-          setSelectedAddress(addressObj);
-
-          // Auto-assign store based on pincode
-          const store = findStoreByPincode(addressObj.pincode, stores);
-          if (store) {
-            setAssignedStore(store);
-          } else {
-            toast.error(`Pincode ${addressObj.pincode} is not serviceable`);
-          }
-
-          toast.success("New address added!");
-        } catch (error: any) {
-          toast.error(friendlyError(error, "Failed to save address. Please try again."));
-        }
-      }
       return customer.id;
     }
 
@@ -458,7 +466,10 @@ export default function CreateOrder() {
 
                 {/* Add New Address Button */}
                 <button
-                  onClick={() => setShowAddressForm(!showAddressForm)}
+                  onClick={() => {
+                    setShowAddressForm(!showAddressForm);
+                    setNewAddress({ label: "Home", line1: "", line2: "", city: "", pincode: "" });
+                  }}
                   className="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 text-emerald-400 text-sm font-semibold rounded-lg border border-gray-700 transition-colors"
                 >
                   {showAddressForm ? "Cancel" : "+ Add New Address"}
@@ -577,6 +588,17 @@ export default function CreateOrder() {
                     />
                   </div>
                 </div>
+
+                {/* Save Address button — only for existing customers; new customers save address on order create */}
+                {!isNewCustomer && (
+                  <button
+                    onClick={saveNewAddress}
+                    disabled={savingAddress}
+                    className="w-full py-3 bg-emerald-500 text-black font-bold rounded-xl hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {savingAddress ? "Saving..." : "Save Address"}
+                  </button>
+                )}
               </div>
             )}
           </div>

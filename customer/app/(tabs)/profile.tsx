@@ -7,6 +7,7 @@ import {
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../src/lib/firebase";
+import { cleanFirestoreData } from "../../src/lib/utils";
 import { useAuthStore, useCartStore } from "../../src/store";
 import { COLLECTIONS, APP_CONFIG } from "../../src/shared/config";
 import { router } from "expo-router";
@@ -21,18 +22,15 @@ export default function ProfileTab() {
   const [notifications, setNotifications] = useState(true);
 
   const handleSave = async () => {
-    // Use user.id (stable phoneDocId) for the Firestore doc, not firebaseUid
-    // (which is the anonymous Firebase UID after the auth fix — a different value).
-    const docId = user?.id || firebaseUid;
-    if (!docId || !name.trim()) return;
+    if (!user?.id || !name.trim()) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, COLLECTIONS.USERS, docId), {
+      await updateDoc(doc(db, COLLECTIONS.USERS, user.id), cleanFirestoreData({
         name: name.trim(),
         email: email.trim() || null,
         updatedAt: serverTimestamp(),
-      });
-      setUser({ ...user!, name: name.trim(), email: email.trim() || undefined }, firebaseUid!);
+      }));
+      setUser({ ...user, name: name.trim(), email: email.trim() || undefined }, firebaseUid!);
       setEditing(false);
       Alert.alert("Profile updated ✓");
     } catch (err: any) {

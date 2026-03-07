@@ -8,6 +8,7 @@ import { useCartStore, useAuthStore, useAppStore } from "../../store";
 import { APP_CONFIG, COLLECTIONS, RAZORPAY_KEY_ID } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, getDoc } from "firebase/firestore";
+import { signInAnonymously } from "firebase/auth";
 import app, { auth, db, functions } from "../../lib/firebase";
 import { router } from "expo-router";
 import { format, addDays } from "date-fns";
@@ -130,16 +131,19 @@ export default function CartCheckout() {
 
     setLoading(true);
     try {
-      // ── Token refresh ─────────────────────────────────────────────────────────
-      // Force-refresh the Firebase ID token before every sensitive CF call.
-      // This guarantees the SDK attaches a valid Bearer token even if the cached
-      // token is stale or the auth state was restored from AsyncStorage.
-      const currentUser = auth.currentUser;
+      // ── Ensure we have a valid Firebase Auth session ───────────────────────
+      // In dev mode the customer uses signInAnonymously().  Expo tunnel sessions
+      // can silently lose the auth state, so we do a layered recovery:
+      //   1. Try forceRefresh on existing currentUser
+      //   2. If no currentUser, re-sign in anonymously
+      let currentUser = auth.currentUser;
       if (!currentUser) {
-        Alert.alert("Session expired", "Your session has expired. Please log in again.");
-        router.replace("/(auth)/login");
-        return;
+        // Session was lost — silently re-authenticate
+        console.warn("[placeOrder] No currentUser, re-signing in anonymously…");
+        const cred = await signInAnonymously(auth);
+        currentUser = cred.user;
       }
+      // Force-refresh to guarantee a valid ID token for the CF call
       await currentUser.getIdToken(/* forceRefresh= */ true);
 
       const placeOrderFn = httpsCallable(functions, "placeOrder");
@@ -200,7 +204,19 @@ export default function CartCheckout() {
       );
 
     } catch (err: any) {
-      Alert.alert("Order failed", err.message || "Please try again.");
+      const code = err?.code || "";
+      if (code.includes("unauthenticated") || code.includes("auth")) {
+        Alert.alert(
+          "Session Error",
+          "Your login session has expired. Please log in again to place the order.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Login", onPress: () => router.replace("/(auth)/login") },
+          ]
+        );
+      } else {
+        Alert.alert("Order failed", err.message || "Please try again.");
+      }
     }
     setLoading(false);
   };

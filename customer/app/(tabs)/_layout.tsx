@@ -2,7 +2,7 @@
 import { Tabs } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useAppStore } from "../../src/store";
+import { useAppStore, useCartStore } from "../../src/store";
 
 function TabIcon({
   name,
@@ -27,6 +27,7 @@ function TabIcon({
 
 export default function TabsLayout() {
   const { activeOrderCount } = useAppStore();
+  const cartCount = useCartStore(s => s.getItemCount());
 
   return (
     <Tabs
@@ -80,10 +81,22 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="cart"
+        options={{
+          title: "Cart",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? "cart" : "cart-outline"}
+              focused={focused}
+              badge={cartCount}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "person" : "person-outline"} focused={focused} />,
+          href: null,
         }}
       />
     </Tabs>

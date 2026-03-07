@@ -6,6 +6,7 @@ import {
 } from "react-native";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../src/lib/firebase";
+import { cleanFirestoreData } from "../../src/lib/utils";
 import { useAuthStore } from "../../src/store";
 import { COLLECTIONS } from "../../src/shared/config";
 import { router } from "expo-router";
@@ -24,16 +25,14 @@ export default function Onboarding() {
     // user.id is the stable phoneDocId (e.g. "919999999999") under which
     // OTPAuth created the Firestore user doc. firebaseUid is the anonymous
     // Firebase UID — a different value after our UID fix.
-    const docId = user?.id || firebaseUid;
-    if (!docId) return;
-
+    if (!user?.id) return;
     setLoading(true);
     try {
-      await updateDoc(doc(db, COLLECTIONS.USERS, docId), {
+      await updateDoc(doc(db, COLLECTIONS.USERS, user.id), cleanFirestoreData({
         name: name.trim(),
         email: email.trim() || null,
         updatedAt: serverTimestamp(),
-      });
+      }));
 
       setUser({ ...user!, name: name.trim(), email: email.trim() || undefined }, firebaseUid!);
       router.replace("/(tabs)/home");

@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import * as Location from "expo-location";
 import { db } from "../../src/lib/firebase";
+import { cleanFirestoreData } from "../../src/lib/utils";
 import { useAuthStore, useAppStore } from "../../src/store";
 import { COLLECTIONS } from "../../src/shared/config";
 import { Address } from "../../src/shared/types";
@@ -98,7 +99,7 @@ export default function AddressScreen() {
       Alert.alert("Required fields", "Please fill in address line 1, city and pincode.");
       return;
     }
-    if (!firebaseUid) return;
+    if (!user?.id) return;
     setSaving(true);
 
     try {
@@ -107,7 +108,7 @@ export default function AddressScreen() {
       if (editId) {
         updated = addresses.map(a =>
           a.id === editId
-            ? { ...a, label, line1: line1.trim(), line2: line2.trim(), city: city.trim(), pincode: pincode.trim(), location: { lat: lat || 0, lng: lng || 0 } }
+            ? { ...a, label, line1: line1.trim(), line2: line2.trim() || null, city: city.trim(), pincode: pincode.trim(), location: { lat: lat || 0, lng: lng || 0 } }
             : a
         );
       } else {
@@ -115,7 +116,7 @@ export default function AddressScreen() {
           id: generateId(),
           label,
           line1: line1.trim(),
-          line2: line2.trim() || undefined,
+          line2: line2.trim() || null,
           city: city.trim(),
           pincode: pincode.trim(),
           location: { lat: lat || 0, lng: lng || 0 },
@@ -124,13 +125,13 @@ export default function AddressScreen() {
         updated = [...addresses, newAddr];
       }
 
-      await updateDoc(doc(db, COLLECTIONS.USERS, firebaseUid), {
+      await updateDoc(doc(db, COLLECTIONS.USERS, user.id), cleanFirestoreData({
         addresses: updated,
         updatedAt: serverTimestamp(),
-      });
+      }));
 
       setAddresses(updated);
-      setUser({ ...user!, addresses: updated }, firebaseUid);
+      setUser({ ...user!, addresses: updated }, firebaseUid!);
       setShowForm(false);
       resetForm();
     } catch (err: any) {
@@ -145,30 +146,30 @@ export default function AddressScreen() {
       {
         text: "Delete", style: "destructive",
         onPress: async () => {
-          if (!firebaseUid) return;
+          if (!user?.id) return;
           const updated = addresses.filter(a => a.id !== id);
           // if deleted was default, make first one default
           if (updated.length > 0 && !updated.some(a => a.isDefault)) {
             updated[0].isDefault = true;
           }
-          await updateDoc(doc(db, COLLECTIONS.USERS, firebaseUid), {
+          await updateDoc(doc(db, COLLECTIONS.USERS, user.id), cleanFirestoreData({
             addresses: updated, updatedAt: serverTimestamp(),
-          });
+          }));
           setAddresses(updated);
-          setUser({ ...user!, addresses: updated }, firebaseUid);
+          setUser({ ...user!, addresses: updated }, firebaseUid!);
         },
       },
     ]);
   };
 
   const setDefault = async (id: string) => {
-    if (!firebaseUid) return;
+    if (!user?.id) return;
     const updated = addresses.map(a => ({ ...a, isDefault: a.id === id }));
-    await updateDoc(doc(db, COLLECTIONS.USERS, firebaseUid), {
+    await updateDoc(doc(db, COLLECTIONS.USERS, user.id), cleanFirestoreData({
       addresses: updated, updatedAt: serverTimestamp(),
-    });
+    }));
     setAddresses(updated);
-    setUser({ ...user!, addresses: updated }, firebaseUid);
+    setUser({ ...user!, addresses: updated }, firebaseUid!);
   };
 
   const handleSelect = (addr: Address) => {

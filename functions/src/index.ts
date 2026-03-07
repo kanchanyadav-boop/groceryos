@@ -158,9 +158,27 @@ export const placeOrder = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Authentication required to place an order.");
   }
 
-  const userId = context.auth.uid;
+  const authUid = context.auth.uid;
   const { items, deliveryAddress, deliverySlot, paymentMethod } = data;
-  functions.logger.info("placeOrder invoked", { userId, itemCount: items?.length });
+
+  // ── Resolve the canonical phone-based userId from the anonymous UID ─────
+  // The customer app stores { firebaseUid: <anonymous-uid> } on the user doc
+  // keyed by normalised phone number.  We query for it so that orders are
+  // tagged with the stable phone-doc-ID, not the ephemeral anonymous UID.
+  let userId = authUid; // fallback
+  try {
+    const userSnap = await db.collection("users")
+      .where("firebaseUid", "==", authUid)
+      .limit(1)
+      .get();
+    if (!userSnap.empty) {
+      userId = userSnap.docs[0].id; // e.g. "919876543210"
+    }
+  } catch (lookupErr) {
+    functions.logger.warn("Could not resolve phone-doc for authUid", { authUid, lookupErr });
+  }
+
+  functions.logger.info("placeOrder invoked", { authUid, userId, itemCount: items?.length });
 
 
   try {
