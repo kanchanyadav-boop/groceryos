@@ -11,6 +11,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar
 } from "recharts";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { toDate } from "../lib/utils";
 import {
   ShoppingCart, Package, TrendingUp, Users, Truck,
   AlertTriangle, Clock, CheckCircle
@@ -112,7 +113,7 @@ export default function Dashboard() {
         const dayStart = startOfDay(d).getTime();
         const dayEnd = endOfDay(d).getTime();
         const dayOrders = orders.filter(o => {
-          const t = o.createdAt ? new Date(o.createdAt).getTime() : 0;
+          const t = o.createdAt ? (toDate(o.createdAt)?.getTime() ?? 0) : 0;
           return t >= dayStart && t <= dayEnd;
         });
         return {
@@ -296,7 +297,7 @@ export default function Dashboard() {
                       #{order.id?.slice(-6).toUpperCase()}
                     </span>
                     <div className="text-gray-600 text-xs mt-0.5">
-                      {order.createdAt ? format(new Date(order.createdAt), "hh:mm a") : "—"}
+                      {order.createdAt ? format(toDate(order.createdAt)!, "hh:mm a") : "—"}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-300 text-sm">

@@ -13,9 +13,10 @@ import Billing from "./pages/Billing";
 import Dispatch from "./pages/Dispatch";
 import StoreManagement from "./pages/StoreManagement";
 import DeliverySlots from "./pages/DeliverySlots";
+import TeamManagement from "./pages/TeamManagement";
 import {
   Tag, Package, ShoppingCart, RotateCcw, IndianRupee,
-  LayoutDashboard, LogOut, Truck, Plus, Store, Clock
+  LayoutDashboard, LogOut, Truck, Plus, Store, Clock, Users
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { to: "/dispatch",     label: "Dispatch",      icon: Truck,           module: "dispatch" },
   { to: "/refunds",      label: "Refunds",       icon: RotateCcw,       module: "refunds" },
   { to: "/billing",      label: "Billing",       icon: IndianRupee,     module: "billing" },
+  { to: "/team",         label: "Team",          icon: Users,           module: "staff" },
 ];
 
 function Sidebar() {
@@ -110,6 +112,7 @@ function AppRoutes() {
           <Route path="/dispatch" element={<Dispatch />} />
           <Route path="/refunds" element={<RefundManagement />} />
           <Route path="/billing" element={<Billing />} />
+          <Route path="/team" element={<TeamManagement />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

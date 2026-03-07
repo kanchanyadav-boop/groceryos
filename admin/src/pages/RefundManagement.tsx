@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../shared/config";
 import { Refund, RefundStatus } from "../../shared/types";
 import { format } from "date-fns";
+import { toDate } from "../lib/utils";
 import { CheckCircle, XCircle, Clock, X } from "lucide-react";
 import { friendlyError } from "../lib/errors";
 
@@ -135,7 +136,7 @@ export default function RefundManagement() {
                   <td className="px-4 py-3 text-white font-bold text-sm">₹{refund.amount}</td>
                   <td className="px-4 py-3 text-gray-400 text-sm max-w-[200px] truncate">{refund.reason}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
-                    {refund.createdAt ? format(new Date(refund.createdAt), "dd MMM, hh:mm a") : "—"}
+                    {refund.createdAt ? format(toDate(refund.createdAt)!, "dd MMM, hh:mm a") : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-bold px-2 py-1 rounded-full border capitalize ${style.color}`}>

@@ -52,6 +52,7 @@ export default function CreateOrder() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
 
   // Fetch stores on mount
   useEffect(() => {
@@ -179,7 +180,6 @@ export default function CreateOrder() {
   const totalAmount = subtotal + deliveryFee - discount;
 
   // Save a new address for an existing customer explicitly (button-triggered)
-  const [savingAddress, setSavingAddress] = useState(false);
   const saveNewAddress = async () => {
     if (!customer) return;
     if (!newAddress.line1.trim() || !newAddress.city.trim() || !newAddress.pincode.trim()) {

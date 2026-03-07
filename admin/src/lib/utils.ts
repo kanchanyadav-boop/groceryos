@@ -34,6 +34,19 @@ export function cleanFirestoreData(obj: any): any {
 }
 
 /**
+ * Converts a Firestore Timestamp, ISO string, number, or Date to a JS Date.
+ * Firestore Timestamp objects have a .toDate() method — using new Date(timestamp)
+ * directly fails because Timestamp.valueOf() returns a string, not a number.
+ */
+export function toDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value.toDate === "function") return value.toDate(); // Firestore Timestamp
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * Formats a currency value to INR locale.
  */
 export function formatCurrency(amount: number): string {

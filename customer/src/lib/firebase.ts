@@ -1,6 +1,6 @@
 // customer/src/lib/firebase.ts
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, initializeAuth, getReactNativePersistence, signInAnonymously, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { getAuth, initializeAuth, getReactNativePersistence, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
@@ -31,14 +31,10 @@ export const functions = getFunctions(app);
 export default app;
 
 // ─── ensureAuth ──────────────────────────────────────────────────────────────
-// Guarantees we have a valid Firebase Auth user before calling Cloud Functions.
-// Handles three cases:
-//   1. User already signed in  →  returns immediately
-//   2. Persistence is restoring (async)  →  waits for it to finish
-//   3. No session found  →  signs in anonymously (silent, invisible to user)
-//
-// Usage:  const user = await ensureAuth();
-//         await user.getIdToken(true);   // fresh token for CF call
+// Waits for Firebase Auth to restore the persisted custom-token session from
+// AsyncStorage. With custom-token auth the session is permanent — it only
+// needs one wait per app launch. Throws if no session exists so the caller
+// can redirect the user to the login screen.
 // ─────────────────────────────────────────────────────────────────────────────
 let _authReady: Promise<FirebaseUser | null> | null = null;
 
@@ -55,18 +51,13 @@ function waitForAuthReady(): Promise<FirebaseUser | null> {
 }
 
 export async function ensureAuth(): Promise<FirebaseUser> {
-  // 1. Fast path — already signed in
-  if (auth.currentUser) {
-    return auth.currentUser;
-  }
+  // Fast path — already restored
+  if (auth.currentUser) return auth.currentUser;
 
-  // 2. Wait for persistence to restore (only blocks once, then cached)
+  // Wait for AsyncStorage persistence to finish loading (first call only)
   const restored = await waitForAuthReady();
-  if (restored) {
-    return restored;
-  }
+  if (restored) return restored;
 
-  // 3. No session at all — sign in anonymously (creates a real Firebase user)
-  const cred = await signInAnonymously(auth);
-  return cred.user;
+  // No session — user must log in
+  throw new Error("NO_SESSION");
 }

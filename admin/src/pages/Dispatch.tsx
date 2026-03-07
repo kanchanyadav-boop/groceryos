@@ -8,6 +8,7 @@ import { db } from "../lib/firebase";
 import { Order, Agent } from "../../shared/types";
 import { COLLECTIONS } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { toDate } from "../lib/utils";
 import app from "../lib/firebase";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -142,7 +143,7 @@ export default function Dispatch() {
                         #{order.id.slice(-6).toUpperCase()}
                       </span>
                       <div className="text-gray-600 text-xs mt-0.5">
-                        {order.createdAt ? format(new Date(order.createdAt), "hh:mm a") : "—"}
+                        {order.createdAt ? format(toDate(order.createdAt)!, "hh:mm a") : "—"}
                       </div>
                     </div>
                     <div className="text-right">

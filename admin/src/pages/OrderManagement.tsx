@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../shared/config";
 import { Order, OrderStatus, Agent } from "../../shared/types";
 import { format } from "date-fns";
+import { toDate } from "../lib/utils";
 import { Eye, Truck, X, ChevronDown } from "lucide-react";
 import { friendlyError } from "../lib/errors";
 
@@ -134,7 +135,7 @@ export default function OrderManagement() {
               <tr key={order.id} className={`border-b border-gray-800/50 hover:bg-gray-800/20 ${i % 2 === 0 ? "" : "bg-gray-900/50"}`}>
                 <td className="px-4 py-3">
                   <span className="text-emerald-400 text-xs font-mono">#{order.id.slice(-6).toUpperCase()}</span>
-                  <div className="text-gray-600 text-xs">{order.createdAt ? format(new Date(order.createdAt), "dd MMM, hh:mm a") : "—"}</div>
+                  <div className="text-gray-600 text-xs">{order.createdAt ? format(toDate(order.createdAt)!, "dd MMM, hh:mm a") : "—"}</div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-white text-sm font-semibold">{order.deliveryAddress?.label || "Customer"}</div>
@@ -215,7 +216,7 @@ export default function OrderManagement() {
                     <div key={i} className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[h.status].split(" ")[1].replace("text-", "bg-")}`}></div>
                       <span className={`text-xs font-bold capitalize ${STATUS_COLORS[h.status].split(" ")[1]}`}>{h.status}</span>
-                      <span className="text-gray-600 text-xs">{h.timestamp ? format(new Date(h.timestamp), "dd MMM, hh:mm a") : ""}</span>
+                      <span className="text-gray-600 text-xs">{h.timestamp ? format(toDate(h.timestamp)!, "dd MMM, hh:mm a") : ""}</span>
                     </div>
                   ))}
                 </div>

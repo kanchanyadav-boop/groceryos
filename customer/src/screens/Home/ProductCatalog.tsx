@@ -304,7 +304,7 @@ export default function ProductCatalog() {
             style={styles.chip}
             onPress={() => router.push(`/category/${encodeURIComponent(cat)}`)}
           >
-            <Text style={styles.chipText} numberOfLines={1}>{cat}</Text>
+            <Text style={styles.chipText}>{cat}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -431,8 +431,8 @@ const styles = StyleSheet.create({
   floatingCartText: { color: "#000", fontWeight: "900", fontSize: 14, letterSpacing: 0.3 },
 
   // Category chip strip
-  chipStrip: { paddingHorizontal: 16, gap: 6, paddingBottom: 10 },
-  chip: { backgroundColor: "#1E2028", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "#2ECC7130" },
+  chipStrip: { paddingHorizontal: 16, paddingBottom: 10, flexDirection: "row", alignItems: "center" },
+  chip: { backgroundColor: "#1E2028", borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: "#2ECC7130", marginRight: 8, flexShrink: 0 },
   chipText: { color: "#C8C8D8", fontSize: 12, fontWeight: "600" },
 
   // Skeleton

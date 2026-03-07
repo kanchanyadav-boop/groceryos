@@ -54,34 +54,51 @@ export const sendOtp = functions.https.onCall(async (data) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 export const verifyOtp = functions.https.onCall(async (data) => {
   const { phone, otp } = data;
-  if (!phone || !otp) {
-    throw new functions.https.HttpsError("invalid-argument", "Phone and OTP are required.");
+  if (!phone) {
+    throw new functions.https.HttpsError("invalid-argument", "Phone number is required.");
   }
 
   const e164 = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`;
 
+  // Skip OTP verification when Twilio is not configured (phone-only login mode)
+  // or when caller explicitly passes otp: "BYPASS".
   const cfg = functions.config().twilio;
-  if (!cfg?.account_sid || !cfg?.auth_token || !cfg?.verify_service_sid) {
-    throw new functions.https.HttpsError("failed-precondition", "Twilio configuration is missing.");
-  }
+  const twilioReady = cfg?.account_sid && cfg?.auth_token && cfg?.verify_service_sid;
+  const skipOtp = !twilioReady || otp === "BYPASS";
 
-  try {
-    const twilio = require("twilio")(cfg.account_sid, cfg.auth_token);
-    const check = await twilio.verify.v2
-      .services(cfg.verify_service_sid)
-      .verificationChecks.create({ to: e164, code: String(otp) });
-
-    if (check.status !== "approved") {
-      throw new functions.https.HttpsError("permission-denied", "Incorrect or expired OTP.");
+  if (!skipOtp) {
+    if (!otp) {
+      throw new functions.https.HttpsError("invalid-argument", "OTP is required.");
     }
-  } catch (err: any) {
-    if (err instanceof functions.https.HttpsError) throw err;
-    console.error("Twilio verifyOtp error:", err);
-    throw new functions.https.HttpsError("internal", err.message || "OTP verification failed.");
+    try {
+      const twilio = require("twilio")(cfg.account_sid, cfg.auth_token);
+      const check = await twilio.verify.v2
+        .services(cfg.verify_service_sid)
+        .verificationChecks.create({ to: e164, code: String(otp) });
+
+      if (check.status !== "approved") {
+        throw new functions.https.HttpsError("permission-denied", "Incorrect or expired OTP.");
+      }
+    } catch (err: any) {
+      if (err instanceof functions.https.HttpsError) throw err;
+      console.error("Twilio verifyOtp error:", err);
+      throw new functions.https.HttpsError("internal", err.message || "OTP verification failed.");
+    }
   }
 
-  // OTP approved — phoneDocId is the stable Firestore user doc ID
+  // OTP approved (or bypassed) — phoneDocId is the stable Firestore user doc ID
   const phoneDocId = e164.replace(/\D/g, ""); // e.g. "919876543210"
+
+  // Ensure Firebase Auth user exists with this stable UID
+  try {
+    await admin.auth().getUser(phoneDocId);
+  } catch (err: any) {
+    if (err.code === "auth/user-not-found") {
+      await admin.auth().createUser({ uid: phoneDocId, phoneNumber: e164, displayName: "" });
+    } else {
+      throw new functions.https.HttpsError("internal", "Failed to set up user account.");
+    }
+  }
 
   const userRef = db.collection("users").doc(phoneDocId);
   const userDoc = await userRef.get();
@@ -98,7 +115,8 @@ export const verifyOtp = functions.https.onCall(async (data) => {
   }
 
   const customToken = await admin.auth().createCustomToken(phoneDocId);
-  return { customToken, userId: phoneDocId, isNewUser: !userDoc.exists };
+  const profile = (await userRef.get()).data()!;
+  return { customToken, userId: phoneDocId, userProfile: profile, isNewUser: !userDoc.exists };
 });
 
 // ─── SMS helper ───────────────────────────────────────────────────────────────
@@ -150,6 +168,64 @@ async function sendSMS(phone: string, otp: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 0c. UPGRADE TO PHONE AUTH
+//     Called from an anonymous Firebase session (context.auth is always set).
+//     Issues a custom token tied to the phone number as a stable UID.
+//     The resulting session persists forever and auto-refreshes — no expiry.
+//
+//     Two-step client flow:
+//       1. signInAnonymously()           → temporary session (no CF needed)
+//       2. upgradeToPhoneAuth({ phone }) → permanent custom-token session
+// ═══════════════════════════════════════════════════════════════════════════════
+export const upgradeToPhoneAuth = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+  }
+
+  const { phone } = data;
+  if (!phone || typeof phone !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "A valid phone number is required.");
+  }
+
+  // Stable UID: strip "+" from E.164 → e.g. "919876543210"
+  const e164 = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`;
+  const uid = e164.replace("+", "");
+
+  // Ensure a Firebase Auth user exists with this stable UID
+  try {
+    await admin.auth().getUser(uid);
+  } catch (err: any) {
+    if (err.code === "auth/user-not-found") {
+      await admin.auth().createUser({ uid, phoneNumber: e164, displayName: "" });
+    } else {
+      throw new functions.https.HttpsError("internal", "Failed to set up user account.");
+    }
+  }
+
+  // Create or update Firestore user doc
+  const userRef = db.collection("users").doc(uid);
+  const snap = await userRef.get();
+
+  if (!snap.exists) {
+    await userRef.set({
+      id: uid,
+      phone: e164,
+      name: "",
+      addresses: [],
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } else {
+    await userRef.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
+  }
+
+  // Issue custom token — UID is stable and tied to this phone number forever
+  const customToken = await admin.auth().createCustomToken(uid);
+  const userDoc = (await userRef.get()).data()!;
+
+  return { customToken, userId: uid, userProfile: userDoc };
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 1. ORDER PLACEMENT — reserve inventory + create Razorpay order
 // ═══════════════════════════════════════════════════════════════════════════════
 export const placeOrder = functions.https.onCall(async (data, context) => {
@@ -158,27 +234,12 @@ export const placeOrder = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Authentication required to place an order.");
   }
 
-  const authUid = context.auth.uid;
+  // With custom-token auth, context.auth.uid IS the stable phone-based userId
+  // (e.g. "919876543210") — no secondary lookup needed.
+  const userId = context.auth.uid;
   const { items, deliveryAddress, deliverySlot, paymentMethod } = data;
 
-  // ── Resolve the canonical phone-based userId from the anonymous UID ─────
-  // The customer app stores { firebaseUid: <anonymous-uid> } on the user doc
-  // keyed by normalised phone number.  We query for it so that orders are
-  // tagged with the stable phone-doc-ID, not the ephemeral anonymous UID.
-  let userId = authUid; // fallback
-  try {
-    const userSnap = await db.collection("users")
-      .where("firebaseUid", "==", authUid)
-      .limit(1)
-      .get();
-    if (!userSnap.empty) {
-      userId = userSnap.docs[0].id; // e.g. "919876543210"
-    }
-  } catch (lookupErr) {
-    functions.logger.warn("Could not resolve phone-doc for authUid", { authUid, lookupErr });
-  }
-
-  functions.logger.info("placeOrder invoked", { authUid, userId, itemCount: items?.length });
+  functions.logger.info("placeOrder invoked", { userId, itemCount: items?.length });
 
 
   try {
@@ -604,6 +665,60 @@ export const autoAssignAgent = functions.https.onCall(async (data, context) => {
 });
 
 // signInWithPhone removed — replaced by sendOtp + verifyOtp (see top of file)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 8b. CREATE STAFF USER — admin creates a new staff / admin account
+//     Uses Admin SDK so the caller's session is NOT affected.
+// ═══════════════════════════════════════════════════════════════════════════════
+export const createStaffUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+  }
+
+  // Verify caller is an admin via Firestore (no custom claims dependency)
+  const callerDoc = await db.collection("staff").doc(context.auth.uid).get();
+  if (!callerDoc.exists || callerDoc.data()?.role !== "admin") {
+    throw new functions.https.HttpsError("permission-denied", "Only admins can create staff accounts.");
+  }
+
+  const { name, email, password, role } = data;
+  const validRoles = ["admin", "inventory_manager", "dispatcher", "billing", "support"];
+
+  if (!name?.trim() || !email?.trim() || !password || !role) {
+    throw new functions.https.HttpsError("invalid-argument", "Name, email, password, and role are required.");
+  }
+  if (!validRoles.includes(role)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid role selected.");
+  }
+  if (password.length < 8) {
+    throw new functions.https.HttpsError("invalid-argument", "Password must be at least 8 characters.");
+  }
+
+  try {
+    const userRecord = await admin.auth().createUser({
+      email: email.trim(),
+      password,
+      displayName: name.trim(),
+    });
+
+    await db.collection("staff").doc(userRecord.uid).set({
+      id: userRecord.uid,
+      name: name.trim(),
+      email: email.trim(),
+      role,
+      permissions: [],
+      createdAt: new Date().toISOString(),
+      createdBy: context.auth.uid,
+    });
+
+    return { uid: userRecord.uid };
+  } catch (err: any) {
+    if (err.code === "auth/email-already-exists") {
+      throw new functions.https.HttpsError("already-exists", "A staff account with this email already exists.");
+    }
+    throw new functions.https.HttpsError("internal", err.message || "Failed to create staff account.");
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 9. SET STAFF ROLE — set Firebase custom claims for role-based access
