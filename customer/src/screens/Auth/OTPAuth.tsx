@@ -2,77 +2,109 @@
 import { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from "react-native";
-import { signInAnonymously } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
-import { auth, db } from "../../lib/firebase";
-import { useAuthStore, useLoaderStore } from "../../store";
+import { signInWithCustomToken, signInAnonymously } from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app, { auth, db } from "../../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
+import { useAuthStore, useLoaderStore, useCartStore } from "../../store";
 import { User } from "../../shared/types";
 import { router } from "expo-router";
 
-// Demo mode: Use Firebase test phone numbers (no SMS sent, but proper auth flow)
-const DEMO_PHONE = "+919999999999";
-const DEMO_OTP = "123456";
+const functions = getFunctions(app);
+
+// ─── Dev test credentials (only active in __DEV__ builds) ───────────────────
+// Use phone 9999999999 + OTP 123456 to test without deploying Cloud Functions.
+// These are stripped out in production builds automatically.
+const DEV_TEST_PHONE = "9999999999";
+const DEV_TEST_OTP = "123456";
+// ⚠️  DEV_MODE = true  →  any phone + OTP 123456 bypasses Twilio (anonymous auth)
+// Set to false when Twilio is live and ready for real SMS verification.
+const DEV_MODE = true;
+
+function getFriendlyError(code: string, message?: string): string {
+  switch (code) {
+    case "invalid-argument": return message || "Invalid input. Please check and try again.";
+    case "not-found": return "OTP not found. Please request a new one.";
+    case "deadline-exceeded": return "OTP expired. Please request a new one.";
+    case "permission-denied": return "Too many wrong attempts. Please request a new OTP.";
+    case "resource-exhausted": return message || "Too many requests. Please try again later.";
+    case "unavailable":
+    case "internal": return "Service temporarily unavailable. Please try again.";
+    default: return "Something went wrong. Please try again.";
+  }
+}
 
 export default function OTPAuth() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [resendTimer, setResendTimer] = useState(0);
-  const [verificationId, setVerificationId] = useState<string>("");
+  const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [sending, setSending] = useState(false);
+
   const { setUser } = useAuthStore();
   const { showLoader, hideLoader } = useLoaderStore();
 
-  // Resend timer countdown
   useEffect(() => {
     if (resendTimer > 0) {
-      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setResendTimer(r => r - 1), 1000);
+      return () => clearTimeout(t);
     }
   }, [resendTimer]);
 
+  const digits = phone.replace(/\D/g, "");
+  const normalized = `+91${digits}`;
+  const isTestPhone = __DEV__ && digits === DEV_TEST_PHONE;
+
   const sendOTP = async (isResend = false) => {
-    const normalized = phone.startsWith("+91") ? phone : `+91${phone.replace(/\D/g, "")}`;
-    if (normalized.length < 13) {
-      Alert.alert("Invalid phone", "Enter a valid 10-digit mobile number");
+    if (digits.length !== 10) {
+      setPhoneError("Enter a valid 10-digit mobile number");
       return;
     }
+    setPhoneError("");
 
-    showLoader(isResend ? "Resending OTP..." : "Sending OTP...");
-
-    try {
-      // For demo: Use Firebase test phone numbers
-      // In production, this will send real SMS
-      // Configure test numbers in Firebase Console: Authentication > Sign-in method > Phone > Test phone numbers
-      
-      // Note: Firebase Phone Auth requires reCAPTCHA on web/React Native
-      // For demo purposes, we'll use a simplified flow
-      // In production, integrate expo-firebase-recaptcha or use Cloud Functions
-      
-      // Simulate OTP sent
+    // ── Dev shortcut ──────────────────────────────────────────────────────────
+    if (isTestPhone) {
       setStep("otp");
       setResendTimer(30);
       setOtp("");
-      
-      if (!isResend) {
-        Alert.alert("OTP Sent", "Please enter the 6-digit OTP sent to your mobile number");
-      } else {
-        Alert.alert("OTP Resent", "A new OTP has been sent to your mobile number");
-      }
-    } catch (error: any) {
-      console.error("Send OTP error:", error);
-      Alert.alert("Error", "Failed to send OTP. Please try again.");
-    } finally {
-      hideLoader();
+      setOtpError("");
+      return;
     }
-  };
 
-  const resendOTP = () => {
-    if (resendTimer > 0) return;
-    sendOTP(true);
+    // ── Production: call Cloud Function ───────────────────────────────────────
+    setSending(true);
+    try {
+      await httpsCallable(functions, "sendOtp")({ phone: normalized });
+      setStep("otp");
+      setResendTimer(30);
+      setOtp("");
+      setOtpError("");
+      if (DEV_MODE) return; // skip actual Twilio call in dev
+    } catch (err: any) {
+      if (DEV_MODE) {
+        // In dev mode, sendOtp CF may not be deployed — just proceed to OTP step
+        setStep("otp");
+        setResendTimer(30);
+        setOtp("");
+        setOtpError("");
+        return;
+      }
+      // Distinguish "function not deployed" from real errors
+      const raw: string = err?.code || "";
+      if (raw === "functions/not-found" || raw === "functions/unavailable") {
+        setPhoneError("OTP service is not available right now. Please try again later.");
+      } else {
+        const code = raw.replace("functions/", "") || "unknown";
+        setPhoneError(getFriendlyError(code, err.message));
+      }
+    } finally {
+      setSending(false);
+    }
   };
 
   const verifyOTP = async () => {
@@ -80,66 +112,71 @@ export default function OTPAuth() {
       setOtpError("Please enter the 6-digit OTP");
       return;
     }
-
-    if (otp !== DEMO_OTP) {
-      setOtpError("Incorrect OTP. Please try again.");
-      return;
-    }
     setOtpError("");
-
-    const normalized = phone.startsWith("+91") ? phone : `+91${phone.replace(/\D/g, "")}`;
     showLoader("Verifying OTP...");
 
     try {
-      // Reuse an existing persisted session, or sign in anonymously.
-      // Anonymous auth satisfies Firestore rules (request.auth != null) and
-      // the placeOrder Cloud Function (context.auth != null).
-      // TODO: Replace with real Firebase Phone Auth for production.
-      const existingUser = auth.currentUser;
-      const firebaseUid = existingUser
-        ? existingUser.uid
-        : (await signInAnonymously(auth)).user.uid;
+      // ── Dev bypass — any phone + 123456 works ──────────────────────────────
+      if (DEV_MODE || isTestPhone) {
+        if (otp !== DEV_TEST_OTP) {
+          setOtpError(`Dev mode: use OTP ${DEV_TEST_OTP}`);
+          hideLoader();
+          return;
+        }
+        const cred = await signInAnonymously(auth);
+        const realFirebaseUid = cred.user.uid;
+        const phoneDocId = normalized.replace("+", "").replace(/\s/g, "");
 
-      // User profile document is keyed by phone-derived ID for human readability.
-      const phoneDocId = normalized.replace(/\+/g, "").replace(/\s/g, "");
-      const userRef = doc(db, COLLECTIONS.USERS, phoneDocId);
-      const userDoc = await getDoc(userRef);
+        const userRef = doc(db, COLLECTIONS.USERS, phoneDocId);
+        const snap = await getDoc(userRef);
+        let userProfile: User;
+        if (snap.exists()) {
+          userProfile = { id: snap.id, ...snap.data() } as User;
+          await setDoc(userRef, { lastLoginAt: serverTimestamp(), firebaseUid: realFirebaseUid }, { merge: true });
+        } else {
+          userProfile = { id: phoneDocId, name: "", phone: normalized, addresses: [] };
+          await setDoc(userRef, { ...userProfile, firebaseUid: realFirebaseUid, createdAt: serverTimestamp() });
+        }
+        setUser(userProfile, realFirebaseUid);
+        useCartStore.getState().clearCart(); // Clear cart for new login
+        router.replace(userProfile.name ? "/(tabs)/home" : "/(auth)/onboarding");
+        return;
+      }
 
+      // ── Production: Cloud Function verifies OTP, returns custom token ───────
+      const { data } = await httpsCallable(functions, "verifyOtp")({ phone: normalized, otp }) as any;
+      await signInWithCustomToken(auth, data.customToken);
+
+      const userRef = doc(db, COLLECTIONS.USERS, data.userId);
+      const snap = await getDoc(userRef);
       let userProfile: User;
-      if (userDoc.exists()) {
-        userProfile = { id: userDoc.id, ...userDoc.data() } as User;
-        await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+      if (snap.exists()) {
+        userProfile = { id: snap.id, ...snap.data() } as User;
       } else {
-        userProfile = { id: phoneDocId, name: "", phone: normalized, addresses: [] };
-        await setDoc(userRef, { ...userProfile, createdAt: serverTimestamp() });
+        userProfile = { id: data.userId, name: "", phone: normalized, addresses: [] };
       }
+      setUser(userProfile, data.userId);
+      useCartStore.getState().clearCart();
+      router.replace(userProfile.name ? "/(tabs)/home" : "/(auth)/onboarding");
 
-      // firebaseUid = anonymous Auth UID — this is what placeOrder stores on
-      // orders and what orders.tsx queries, so everything stays in sync.
-      setUser(userProfile, firebaseUid);
-
-      if (!userProfile.name) {
-        router.replace("/(auth)/onboarding");
-      } else {
-        router.replace("/(tabs)/home");
-      }
     } catch (err: any) {
-      console.error("Verification error:", err);
-      Alert.alert("Login Failed", err.message || "Unable to verify OTP. Please try again.");
+      const raw: string = err?.code || "";
+      if (raw === "functions/not-found" || raw === "functions/unavailable") {
+        setOtpError("OTP service is not available right now. Please try again later.");
+      } else {
+        const code = raw.replace("functions/", "") || "unknown";
+        setOtpError(getFriendlyError(code, err.message));
+      }
     } finally {
       hideLoader();
     }
   };
 
-  const skipLogin = async () => {
-    // Guest browsing - no account created yet
-    // User can browse and add to cart
-    // Will be prompted to login at checkout
-    router.replace("/(tabs)/home");
-  };
-
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <View style={styles.inner}>
         <Text style={styles.logo}>🛒</Text>
         <Text style={styles.title}>Green's Supermarket</Text>
@@ -153,28 +190,44 @@ export default function OTPAuth() {
                 <Text style={styles.countryCodeText}>+91</Text>
               </View>
               <TextInput
-                style={styles.phoneInput}
+                style={[styles.phoneInput, phoneError ? styles.inputError : null]}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={t => { setPhone(t); if (phoneError) setPhoneError(""); }}
                 placeholder="9876543210"
                 placeholderTextColor="#4E4E60"
                 keyboardType="phone-pad"
                 maxLength={10}
+                editable={!sending}
               />
             </View>
-            <TouchableOpacity style={styles.btn} onPress={() => sendOTP(false)}>
-              <Text style={styles.btnText}>Send OTP</Text>
+            {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
+            {isTestPhone ? (
+              <Text style={styles.devHint}>Dev mode · use OTP {DEV_TEST_OTP}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.btn, sending && styles.btnDisabled]}
+              onPress={() => sendOTP(false)}
+              disabled={sending}
+            >
+              {sending
+                ? <ActivityIndicator color="#000" size="small" />
+                : <Text style={styles.btnText}>Send OTP</Text>
+              }
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={skipLogin} style={styles.skipBtn}>
+            <TouchableOpacity onPress={() => router.replace("/(tabs)/home")} style={styles.skipBtn}>
               <Text style={styles.skipText}>Skip for now, just browse products →</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <Text style={styles.label}>Enter OTP sent to +91{phone}</Text>
+            <Text style={styles.label}>OTP sent to +91 {phone}</Text>
+            {isTestPhone ? (
+              <Text style={styles.devHint}>Dev mode · enter {DEV_TEST_OTP}</Text>
+            ) : null}
             <TextInput
-              style={[styles.otpInput, otpError ? styles.otpInputError : null]}
+              style={[styles.otpInput, otpError ? styles.inputError : null]}
               value={otp}
               onChangeText={v => { setOtp(v); if (otpError) setOtpError(""); }}
               placeholder="• • • • • •"
@@ -184,21 +237,24 @@ export default function OTPAuth() {
               autoFocus
             />
             {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
+
             <TouchableOpacity style={styles.btn} onPress={verifyOTP}>
               <Text style={styles.btnText}>Verify & Login</Text>
             </TouchableOpacity>
-            
+
             <View style={styles.resendRow}>
-              <TouchableOpacity onPress={() => setStep("phone")} style={styles.backBtn}>
+              <TouchableOpacity
+                onPress={() => { setStep("phone"); setOtpError(""); }}
+                style={styles.backBtn}
+              >
                 <Text style={styles.backText}>← Change number</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                onPress={resendOTP} 
-                disabled={resendTimer > 0}
+              <TouchableOpacity
+                onPress={() => sendOTP(true)}
+                disabled={resendTimer > 0 || sending}
                 style={styles.resendBtn}
               >
-                <Text style={[styles.resendText, resendTimer > 0 && styles.resendDisabled]}>
+                <Text style={[styles.resendText, (resendTimer > 0 || sending) && styles.resendDisabled]}>
                   {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
                 </Text>
               </TouchableOpacity>
@@ -221,7 +277,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "900", color: "#fff", textAlign: "center" },
   subtitle: { fontSize: 14, color: "#8A8A9A", textAlign: "center", marginBottom: 40 },
   label: { color: "#7A7A8E", fontSize: 13, fontWeight: "600", marginBottom: 8 },
-  phoneRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  devHint: { color: "#F59E0B", fontSize: 11, fontWeight: "700", marginBottom: 8, textAlign: "center" },
+  phoneRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
   countryCode: {
     width: 56, backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830",
     borderRadius: 14, alignItems: "center", justifyContent: "center",
@@ -234,35 +291,23 @@ const styles = StyleSheet.create({
   otpInput: {
     backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830",
     borderRadius: 14, paddingHorizontal: 16, height: 62, color: "#fff",
-    fontSize: 28, letterSpacing: 12, textAlign: "center", marginBottom: 16,
+    fontSize: 28, letterSpacing: 12, textAlign: "center", marginBottom: 4,
   },
+  inputError: { borderColor: "#E05252" },
   btn: {
     backgroundColor: "#2ECC71", borderRadius: 14, height: 52,
-    alignItems: "center", justifyContent: "center", marginBottom: 12,
+    alignItems: "center", justifyContent: "center", marginTop: 12, marginBottom: 12,
   },
+  btnDisabled: { opacity: 0.6 },
   btnText: { color: "#000", fontWeight: "900", fontSize: 15 },
-  resendRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "center",
-    marginBottom: 12,
-  },
+  resendRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   backBtn: { paddingVertical: 8 },
   backText: { color: "#8A8A9A", fontSize: 14 },
   resendBtn: { paddingVertical: 8 },
   resendText: { color: "#2ECC71", fontSize: 14, fontWeight: "600" },
   resendDisabled: { color: "#4E4E60" },
-  otpInputError: { borderColor: "#E05252" },
-  errorText: { color: "#E05252", fontSize: 12, marginBottom: 12, marginTop: -8 },
-  skipBtn: { 
-    alignItems: "center", 
-    paddingVertical: 12, 
-    marginTop: 8,
-  },
-  skipText: { 
-    color: "#8A8A9A", 
-    fontSize: 14, 
-    fontWeight: "500",
-  },
+  errorText: { color: "#E05252", fontSize: 12, marginBottom: 8, marginTop: 2 },
+  skipBtn: { alignItems: "center", paddingVertical: 12, marginTop: 4 },
+  skipText: { color: "#8A8A9A", fontSize: 14, fontWeight: "500" },
   terms: { color: "#3D3D50", fontSize: 11, textAlign: "center", marginTop: 16, lineHeight: 16 },
 });

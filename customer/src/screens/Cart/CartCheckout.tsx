@@ -42,7 +42,7 @@ function getAvailableSlotsForDate(date: string, config: DeliverySlotsConfig): Sl
 export default function CartCheckout() {
   const { items, updateQty, clearCart, getItemCount } = useCartStore();
   const { user, firebaseUid, isLoggedIn } = useAuthStore();
-  const { selectedAddress, selectedSlot, setSelectedSlot } = useAppStore();
+  const { selectedAddress, selectedSlot, setSelectedSlot, selectedPincode, serviceableStoreId } = useAppStore();
   const [paymentMethod, setPaymentMethod] = useState<"cod">("cod");
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -90,6 +90,15 @@ export default function CartCheckout() {
       return;
     }
 
+    if (!selectedPincode || !serviceableStoreId) {
+      Alert.alert(
+        "Set your delivery area",
+        "Please set your pincode first so we can confirm we deliver to your area.",
+        [{ text: "OK", onPress: () => router.replace("/(tabs)/home") }]
+      );
+      return;
+    }
+
     if (!selectedAddress) {
       Alert.alert(
         "No address selected",
@@ -97,6 +106,19 @@ export default function CartCheckout() {
         [
           { text: "Cancel", style: "cancel" },
           { text: "Add Address", onPress: () => router.push("/address?select=1") },
+        ]
+      );
+      return;
+    }
+
+    // Guard: address pincode must match the serviceable pincode on file
+    if (selectedAddress.pincode !== selectedPincode) {
+      Alert.alert(
+        "Address outside delivery area",
+        `Your selected address (${selectedAddress.pincode}) is outside your confirmed delivery area (${selectedPincode}). Please select a matching address or update your pincode.`,
+        [
+          { text: "Change Address", onPress: () => router.push("/address?select=1") },
+          { text: "Cancel", style: "cancel" },
         ]
       );
       return;

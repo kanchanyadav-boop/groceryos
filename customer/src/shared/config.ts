@@ -49,4 +49,6 @@ export const COLLECTIONS = {
   CHATS: "chats",
   NOTIFICATIONS: "notifications",
   INVENTORY_LOGS: "inventoryLogs",
+  STORES: "stores",
+  SETTINGS: "settings",
 };

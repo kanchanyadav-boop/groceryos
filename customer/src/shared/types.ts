@@ -6,7 +6,7 @@ export type PaymentMethod = "upi" | "card" | "wallet" | "cod";
 export type PaymentStatus = "created" | "authorized" | "captured" | "failed" | "refunded";
 export type RefundStatus = "pending" | "approved" | "processed" | "rejected";
 export type AgentStatus = "available" | "busy" | "offline";
-export type DeliverySlot = "AM" | "PM";
+export type DeliverySlot = string; // e.g. "AM", "PM", or any admin-defined slot id
 
 export interface GeoPoint {
   lat: number;
@@ -161,6 +161,43 @@ export interface DeliverySlotConfig {
   date: string;
   AM: { capacity: number; booked: number; cutoffTime: string };
   PM: { capacity: number; booked: number; cutoffTime: string };
+}
+
+// Admin-configurable slot definition stored in settings/deliverySlots
+export interface SlotConfig {
+  id: string;            // e.g. "AM", "PM"
+  name: string;          // e.g. "Morning"
+  emoji: string;         // e.g. "🌅"
+  timeRange: string;     // display string e.g. "9am – 1pm"
+  cutoffHour: number;    // 0–23: orders placed at/after this hour can't pick today's slot
+  capacityPerDay: number;
+  isActive: boolean;
+}
+
+export interface DeliverySlotsConfig {
+  slots: SlotConfig[];
+  advanceDays: number;   // how many days ahead customers can book
+}
+
+export interface Store {
+  id: string;
+  name: string;
+  code: string;
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    location: GeoPoint;
+  };
+  phone: string;
+  email?: string;
+  serviceablePincodes: string[];
+  isActive: boolean;
+  operatingHours?: { open: string; close: string };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Category {

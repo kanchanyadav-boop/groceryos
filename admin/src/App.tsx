@@ -12,16 +12,18 @@ import RefundManagement from "./pages/RefundManagement";
 import Billing from "./pages/Billing";
 import Dispatch from "./pages/Dispatch";
 import StoreManagement from "./pages/StoreManagement";
+import DeliverySlots from "./pages/DeliverySlots";
 import {
   Tag, Package, ShoppingCart, RotateCcw, IndianRupee,
-  LayoutDashboard, LogOut, Truck, Plus, Store
+  LayoutDashboard, LogOut, Truck, Plus, Store, Clock
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/",             label: "Dashboard",     icon: LayoutDashboard, module: "orders" },
-  { to: "/orders",       label: "Orders",        icon: ShoppingCart,    module: "orders" },
-  { to: "/create-order", label: "Create Order",  icon: Plus,            module: "orders" },
-  { to: "/stores",       label: "Stores",        icon: Store,           module: "orders" },
+  { to: "/",                label: "Dashboard",       icon: LayoutDashboard, module: "orders" },
+  { to: "/orders",          label: "Orders",          icon: ShoppingCart,    module: "orders" },
+  { to: "/create-order",    label: "Create Order",    icon: Plus,            module: "orders" },
+  { to: "/stores",          label: "Stores",          icon: Store,           module: "orders" },
+  { to: "/delivery-slots",  label: "Delivery Slots",  icon: Clock,           module: "orders" },
   { to: "/sku",          label: "Products",      icon: Tag,             module: "sku" },
   { to: "/inventory",    label: "Inventory",     icon: Package,         module: "inventory" },
   { to: "/dispatch",     label: "Dispatch",      icon: Truck,           module: "dispatch" },
@@ -102,6 +104,7 @@ function AppRoutes() {
           <Route path="/orders" element={<OrderManagement />} />
           <Route path="/create-order" element={<CreateOrder />} />
           <Route path="/stores" element={<StoreManagement />} />
+          <Route path="/delivery-slots" element={<DeliverySlots />} />
           <Route path="/sku" element={<SKUManagement />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/dispatch" element={<Dispatch />} />

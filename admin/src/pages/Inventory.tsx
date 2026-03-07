@@ -9,6 +9,7 @@ import { InventoryItem, Product, Store } from "../../../shared/types";
 import { AlertTriangle, TrendingDown, Package, Save, Store as StoreIcon } from "lucide-react";
 
 interface InventoryRow extends InventoryItem {
+  docId: string;       // Firestore document ID: "{storeId}_{skuId}"
   productName: string;
   productCategory: string;
   productUnit: string;
@@ -65,16 +66,18 @@ export default function Inventory() {
 
     return onSnapshot(inventoryQuery, snap => {
       const enriched: InventoryRow[] = snap.docs.map(d => {
-        // Fix: spread data first so the doc ID always wins as skuId
-        const item = { ...d.data(), skuId: d.id } as InventoryItem;
+        // skuId and storeId come from document data fields.
+        // The document ID is the composite key "{storeId}_{skuId}".
+        const data = d.data() as InventoryItem;
         return {
-          ...item,
-          productName: productMapRef.current[item.skuId]?.name || item.skuId,
-          productCategory: productMapRef.current[item.skuId]?.category || "—",
-          productUnit: productMapRef.current[item.skuId]?.unit || "pcs",
-          storeName: storeMapRef.current[item.storeId] || "Unknown Store",
+          ...data,
+          docId: d.id,
+          productName: productMapRef.current[data.skuId]?.name || data.skuId,
+          productCategory: productMapRef.current[data.skuId]?.category || "—",
+          productUnit: productMapRef.current[data.skuId]?.unit || "pcs",
+          storeName: storeMapRef.current[data.storeId] || "Unknown Store",
           editing: false,
-          newQty: item.quantity,
+          newQty: data.quantity,
         };
       });
       setRows(enriched);
@@ -82,18 +85,19 @@ export default function Inventory() {
     });
   }, [selectedStore]);
 
-  const updateQty = (skuId: string, val: number) => {
-    setRows(prev => prev.map(r => r.skuId === skuId ? { ...r, newQty: val } : r));
+  const updateQty = (docId: string, val: number) => {
+    setRows(prev => prev.map(r => r.docId === docId ? { ...r, newQty: val } : r));
   };
 
   const saveQty = async (row: InventoryRow) => {
     if (row.newQty === undefined || row.newQty < 0) return;
-    setSaving(row.skuId);
+    setSaving(row.docId);
     try {
       const newQty = row.newQty;
       const available = newQty - row.reserved;
 
-      await updateDoc(doc(db, COLLECTIONS.INVENTORY, row.skuId), {
+      // Document ID is the composite key "{storeId}_{skuId}"
+      await updateDoc(doc(db, COLLECTIONS.INVENTORY, row.docId), {
         quantity: newQty,
         available: Math.max(0, available),
         updatedBy: staffProfile?.id || "admin",
@@ -103,6 +107,7 @@ export default function Inventory() {
       // Log the change
       await addDoc(collection(db, COLLECTIONS.INVENTORY_LOGS), {
         skuId: row.skuId,
+        storeId: row.storeId,
         previousQty: row.quantity,
         newQty,
         delta: newQty - row.quantity,
@@ -111,7 +116,7 @@ export default function Inventory() {
         createdAt: serverTimestamp(),
       });
 
-      // Update product inStock flag
+      // Update product inStock flag (global — product is in-stock if any store has stock)
       await updateDoc(doc(db, COLLECTIONS.PRODUCTS, row.skuId), {
         inStock: newQty > 0,
         updatedAt: serverTimestamp(),
@@ -226,15 +231,15 @@ export default function Inventory() {
                         type="number"
                         min={0}
                         value={row.newQty ?? row.quantity}
-                        onChange={e => updateQty(row.skuId, parseInt(e.target.value) || 0)}
+                        onChange={e => updateQty(row.docId, parseInt(e.target.value) || 0)}
                         className="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500 text-center"
                       />
                       <button
                         onClick={() => saveQty(row)}
-                        disabled={saving === row.skuId || row.newQty === row.quantity}
+                        disabled={saving === row.docId || row.newQty === row.quantity}
                         className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 disabled:opacity-30 transition-colors"
                       >
-                        {saving === row.skuId ? "..." : <Save size={14} />}
+                        {saving === row.docId ? "..." : <Save size={14} />}
                       </button>
                     </div>
                   </td>

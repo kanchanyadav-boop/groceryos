@@ -164,12 +164,30 @@ export const placeOrder = functions.https.onCall(async (data, context) => {
 
 
   try {
+    // ── Store routing: find the active store that serves the delivery pincode ──
+    const pincode: string = deliveryAddress?.pincode;
+    if (!pincode) throw new Error("Delivery address pincode is required.");
+
+    const storesSnap = await db.collection("stores").where("isActive", "==", true).get();
+    let assignedStoreId: string | null = null;
+    for (const storeDoc of storesSnap.docs) {
+      const pincodes: string[] = storeDoc.data().serviceablePincodes || [];
+      if (pincodes.includes(pincode)) {
+        assignedStoreId = storeDoc.id;
+        break;
+      }
+    }
+    if (!assignedStoreId) {
+      throw new Error(`Delivery to pincode ${pincode} is not available yet.`);
+    }
+
     const result = await db.runTransaction(async (txn) => {
       let subtotal = 0;
       const validatedItems = [];
 
       for (const item of items) {
-        const invRef = db.collection("inventory").doc(item.skuId);
+        // Inventory is store-scoped: "{storeId}_{skuId}"
+        const invRef = db.collection("inventory").doc(`${assignedStoreId}_${item.skuId}`);
         const productRef = db.collection("products").doc(item.skuId);
         const [invDoc, productDoc] = await Promise.all([txn.get(invRef), txn.get(productRef)]);
 
@@ -206,10 +224,11 @@ export const placeOrder = functions.https.onCall(async (data, context) => {
       const deliveryFee = subtotal >= 500 ? 0 : 30;
       const totalAmount = subtotal + deliveryFee;
 
-      // Create order document
+      // Create order document — storeId captured for downstream inventory ops
       const orderRef = db.collection("orders").doc();
       txn.set(orderRef, {
         userId,
+        storeId: assignedStoreId,
         status: "confirmed",
         statusHistory: [{ status: "confirmed", timestamp: new Date().toISOString(), updatedBy: userId }],
         items: validatedItems,
@@ -418,10 +437,13 @@ export const onOrderStatusChange = functions.firestore
 
     if (before.status === after.status) return;
 
-    // Decrement reserved inventory when delivered or cancelled
+    // Decrement reserved inventory when delivered or cancelled.
+    // Use store-scoped key "{storeId}_{skuId}"; fall back to bare skuId for
+    // any orders placed before multi-store routing was enabled.
     if (after.status === "delivered" || after.status === "cancelled") {
       for (const item of after.items || []) {
-        const invRef = db.collection("inventory").doc(item.skuId);
+        const invDocId = after.storeId ? `${after.storeId}_${item.skuId}` : item.skuId;
+        const invRef = db.collection("inventory").doc(invDocId);
         const invDoc = await invRef.get();
         if (!invDoc.exists) continue;
         const inv = invDoc.data()!;
@@ -453,14 +475,16 @@ export const onOrderStatusChange = functions.firestore
 // 6. LOW STOCK ALERT — notify admin when stock drops below threshold
 // ═══════════════════════════════════════════════════════════════════════════════
 export const onInventoryUpdate = functions.firestore
-  .document("inventory/{skuId}")
+  .document("inventory/{docId}")
   .onUpdate(async (change) => {
     const after = change.after.data();
     const before = change.before.data();
 
     // Only alert when crossing the threshold downward
     if (before.available > after.lowStockThreshold && after.available <= after.lowStockThreshold) {
-      const productDoc = await db.collection("products").doc(change.after.id).get();
+      // skuId is stored as a field in the document (doc ID is "{storeId}_{skuId}")
+      const skuId: string = after.skuId || change.after.id;
+      const productDoc = await db.collection("products").doc(skuId).get();
       const product = productDoc.data();
 
       // Get all admin FCM tokens

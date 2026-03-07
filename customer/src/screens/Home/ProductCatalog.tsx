@@ -10,9 +10,10 @@ import {
 import { db } from "../../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
 import { Product } from "../../shared/types";
-import { useCartStore } from "../../store";
+import { useCartStore, useAppStore } from "../../store";
 import { router } from "expo-router";
 import DrawerMenu from "../../components/DrawerMenu";
+import PincodeGate from "../../components/PincodeGate";
 import { CATEGORY_LIST } from "../../shared/categories";
 
 const { width } = Dimensions.get("window");
@@ -163,6 +164,7 @@ export default function ProductCatalog() {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const { getItemCount, getTotal } = useCartStore();
+  const { selectedPincode, setSelectedPincode, setServiceableStoreId } = useAppStore();
   const cartCount = getItemCount();
   const cartTotal = getTotal();
 
@@ -268,7 +270,11 @@ export default function ProductCatalog() {
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Green's Supermarket</Text>
-            <Text style={styles.headerSubtitle}>📍 Delivering to your area</Text>
+            <TouchableOpacity onPress={() => { setSelectedPincode(null); setServiceableStoreId(null); }}>
+              <Text style={styles.headerSubtitle}>
+                📍 {selectedPincode ? `Pincode ${selectedPincode} · Change` : "Set your location"}
+              </Text>
+            </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.cartBtn} onPress={() => router.push("/cart")}>
             <Text style={styles.cartIcon}>🛒</Text>
@@ -323,6 +329,12 @@ export default function ProductCatalog() {
   // Main home view with categories
   return (
     <View style={styles.container}>
+      {/* Pincode Gate — shown when no pincode is selected */}
+      <PincodeGate
+        visible={!selectedPincode}
+        onConfirmed={() => {/* state update handled inside PincodeGate */}}
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuBtn}>
@@ -330,7 +342,11 @@ export default function ProductCatalog() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Green's Supermarket</Text>
-          <Text style={styles.headerSubtitle}>📍 Delivering to your area</Text>
+          <TouchableOpacity onPress={() => { setSelectedPincode(null); setServiceableStoreId(null); }}>
+            <Text style={styles.headerSubtitle}>
+              📍 {selectedPincode ? `Pincode ${selectedPincode} · Change` : "Set your location"}
+            </Text>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.cartBtn} onPress={() => router.push("/cart")}>
           <Text style={styles.cartIcon}>🛒</Text>

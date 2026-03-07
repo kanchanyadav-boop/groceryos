@@ -108,24 +108,48 @@ export const useAuthStore = create<AuthStore>()(
   )
 );
 
-// ─── App Store (ephemeral) ────────────────────────────────────────────────────
+// ─── App Store ────────────────────────────────────────────────────────────────
+// selectedPincode + serviceableStoreId are persisted so the user doesn't have
+// to re-enter their pincode on every app launch.
 interface AppStore {
   selectedAddress: Address | null;
-  selectedSlot: { date: string; slot: "AM" | "PM" } | null;
+  selectedSlot: { date: string; slot: string } | null;
   activeOrderCount: number;
+  // Pincode serviceability
+  selectedPincode: string | null;
+  serviceableStoreId: string | null;
   setSelectedAddress: (address: Address) => void;
-  setSelectedSlot: (slot: { date: string; slot: "AM" | "PM" }) => void;
+  setSelectedSlot: (slot: { date: string; slot: string } | null) => void;
   setActiveOrderCount: (count: number) => void;
+  setSelectedPincode: (pincode: string | null) => void;
+  setServiceableStoreId: (storeId: string | null) => void;
 }
 
-export const useAppStore = create<AppStore>((set) => ({
-  selectedAddress: null,
-  selectedSlot: null,
-  activeOrderCount: 0,
-  setSelectedAddress: (address) => set({ selectedAddress: address }),
-  setSelectedSlot: (slot) => set({ selectedSlot: slot }),
-  setActiveOrderCount: (count) => set({ activeOrderCount: count }),
-}));
+export const useAppStore = create<AppStore>()(
+  persist(
+    (set) => ({
+      selectedAddress: null,
+      selectedSlot: null,
+      activeOrderCount: 0,
+      selectedPincode: null,
+      serviceableStoreId: null,
+      setSelectedAddress: (address) => set({ selectedAddress: address }),
+      setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+      setActiveOrderCount: (count) => set({ activeOrderCount: count }),
+      setSelectedPincode: (pincode) => set({ selectedPincode: pincode }),
+      setServiceableStoreId: (storeId) => set({ serviceableStoreId: storeId }),
+    }),
+    {
+      name: "app-storage",
+      storage: createJSONStorage(() => AsyncStorage),
+      // Only persist the pincode fields — address/slot stay ephemeral
+      partialize: (state) => ({
+        selectedPincode: state.selectedPincode,
+        serviceableStoreId: state.serviceableStoreId,
+      }),
+    }
+  )
+);
 
 // ─── Global Loader Store ──────────────────────────────────────────────────────
 interface LoaderStore {

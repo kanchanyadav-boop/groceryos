@@ -7,12 +7,13 @@ import {
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../src/lib/firebase";
-import { useAuthStore } from "../../src/store";
+import { useAuthStore, useCartStore } from "../../src/store";
 import { COLLECTIONS, APP_CONFIG } from "../../src/shared/config";
 import { router } from "expo-router";
 
 export default function ProfileTab() {
   const { user, firebaseUid, setUser, clearUser } = useAuthStore();
+  const { clearCart } = useCartStore();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -20,17 +21,20 @@ export default function ProfileTab() {
   const [notifications, setNotifications] = useState(true);
 
   const handleSave = async () => {
-    if (!firebaseUid || !name.trim()) return;
+    // Use user.id (stable phoneDocId) for the Firestore doc, not firebaseUid
+    // (which is the anonymous Firebase UID after the auth fix — a different value).
+    const docId = user?.id || firebaseUid;
+    if (!docId || !name.trim()) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, COLLECTIONS.USERS, firebaseUid), {
+      await updateDoc(doc(db, COLLECTIONS.USERS, docId), {
         name: name.trim(),
         email: email.trim() || null,
         updatedAt: serverTimestamp(),
       });
-      setUser({ ...user!, name: name.trim(), email: email.trim() || undefined }, firebaseUid);
+      setUser({ ...user!, name: name.trim(), email: email.trim() || undefined }, firebaseUid!);
       setEditing(false);
-      Alert.alert("Profile updated");
+      Alert.alert("Profile updated ✓");
     } catch (err: any) {
       Alert.alert("Error", err.message);
     }
@@ -45,6 +49,7 @@ export default function ProfileTab() {
         onPress: async () => {
           await signOut(auth);
           clearUser();
+          clearCart();
           router.replace("/(auth)/login");
         },
       },

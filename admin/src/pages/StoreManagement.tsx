@@ -12,7 +12,7 @@ export default function StoreManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -108,14 +108,14 @@ export default function StoreManagement() {
       code: formData.code.toUpperCase(),
       address: {
         line1: formData.line1,
-        line2: formData.line2 || undefined,
+        line2: formData.line2 || null,
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
         location: { lat: 0, lng: 0 }, // TODO: Geocode address
       },
       phone: formData.phone,
-      email: formData.email || undefined,
+      email: formData.email || null,
       serviceablePincodes: pincodes,
       isActive: formData.isActive,
       operatingHours: {
@@ -144,7 +144,7 @@ export default function StoreManagement() {
 
   const deleteStore = async (storeId: string) => {
     if (!confirm("Are you sure you want to delete this store?")) return;
-    
+
     try {
       await deleteDoc(doc(db, COLLECTIONS.STORES, storeId));
       toast.success("Store deleted");
@@ -244,11 +244,10 @@ export default function StoreManagement() {
             </div>
 
             <div className="mt-4">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                store.isActive
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${store.isActive
                   ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                   : "bg-gray-800 text-gray-500 border border-gray-700"
-              }`}>
+                }`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${store.isActive ? "bg-emerald-400" : "bg-gray-500"}`}></div>
                 {store.isActive ? "Active" : "Inactive"}
               </span>
