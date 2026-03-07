@@ -467,6 +467,15 @@ export const onOrderStatusChange = functions.firestore
       }
     }
 
+    // Free the assigned agent when order is terminal (delivered or cancelled)
+    if ((after.status === "delivered" || after.status === "cancelled") && after.agentId) {
+      await db.collection("agents").doc(after.agentId).update({
+        status: "available",
+        activeOrderId: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
     // Send FCM notification to customer
     await sendOrderNotification(after.userId, after.status, context.params.orderId);
   });

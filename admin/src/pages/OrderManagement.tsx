@@ -7,6 +7,7 @@ import { COLLECTIONS } from "../../shared/config";
 import { Order, OrderStatus, Agent } from "../../shared/types";
 import { format } from "date-fns";
 import { Eye, Truck, X, ChevronDown } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   confirmed:  "bg-blue-500/15 text-blue-400 border-blue-500/30",
@@ -44,18 +45,32 @@ export default function OrderManagement() {
     });
   }, []);
 
-  const updateStatus = async (orderId: string, status: OrderStatus, updatedBy = "admin") => {
-    setUpdating(orderId);
+  const STATUS_LABELS: Record<OrderStatus, string> = {
+    confirmed: "Confirmed",
+    packed: "Packed",
+    dispatched: "Out for Delivery",
+    delivered: "Delivered",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+  };
+
+  const updateStatus = async (order: Order, nextStatus: OrderStatus, updatedBy = "admin") => {
+    // Guard: an order cannot be dispatched without an assigned agent
+    if (nextStatus === "dispatched" && !order.agentId) {
+      toast.error("Please assign a delivery agent before dispatching this order.");
+      return;
+    }
+
+    setUpdating(order.id);
     try {
-      // arrayUnion appends atomically — safe against concurrent updates from other admin sessions
-      await updateDoc(doc(db, COLLECTIONS.ORDERS, orderId), {
-        status,
-        statusHistory: arrayUnion({ status, timestamp: new Date().toISOString(), updatedBy }),
+      await updateDoc(doc(db, COLLECTIONS.ORDERS, order.id), {
+        status: nextStatus,
+        statusHistory: arrayUnion({ status: nextStatus, timestamp: new Date().toISOString(), updatedBy }),
         updatedAt: serverTimestamp(),
       });
-      toast.success(`Order marked as ${status}`);
+      toast.success(`Order updated to "${STATUS_LABELS[nextStatus]}"`);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to update order status. Please try again."));
     }
     setUpdating(null);
   };
@@ -69,9 +84,9 @@ export default function OrderManagement() {
       await updateDoc(doc(db, COLLECTIONS.AGENTS, agentId), {
         status: "busy", activeOrderId: orderId,
       });
-      toast.success("Agent assigned");
+      toast.success("Delivery agent assigned successfully");
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to assign agent. Please try again."));
     }
     setUpdating(null);
   };
@@ -160,17 +175,18 @@ export default function OrderManagement() {
                     {/* Next status button */}
                     {STATUS_FLOW.indexOf(order.status) >= 0 && STATUS_FLOW.indexOf(order.status) < STATUS_FLOW.length - 1 && (
                       <button
-                        onClick={() => updateStatus(order.id, STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1])}
+                        onClick={() => updateStatus(order, STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1])}
                         disabled={updating === order.id}
                         className="flex items-center gap-1 px-2 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-lg hover:bg-emerald-500/30 disabled:opacity-50"
+                        title={STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1] === "dispatched" && !order.agentId ? "Assign an agent first" : ""}
                       >
                         <Truck size={12} />
                         {STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]}
                       </button>
                     )}
-                    {order.status === "confirmed" && (
-                      <button onClick={() => updateStatus(order.id, "cancelled")}
-                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><X size={14} /></button>
+                    {(order.status === "confirmed" || order.status === "packed") && (
+                      <button onClick={() => updateStatus(order, "cancelled")}
+                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg" title="Cancel order"><X size={14} /></button>
                     )}
                   </div>
                 </td>

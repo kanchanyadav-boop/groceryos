@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../../shared/config";
 import { InventoryItem, Product, Store } from "../../../shared/types";
 import { AlertTriangle, TrendingDown, Package, Save, Store as StoreIcon } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 interface InventoryRow extends InventoryItem {
   docId: string;       // Firestore document ID: "{storeId}_{skuId}"
@@ -116,15 +117,20 @@ export default function Inventory() {
         createdAt: serverTimestamp(),
       });
 
-      // Update product inStock flag (global — product is in-stock if any store has stock)
+      // Update the product's global inStock flag only if ALL stores are now at 0
+      // (a product is globally available as long as any active store has stock).
+      const allInvSnap = await getDocs(
+        query(collection(db, COLLECTIONS.INVENTORY), where("skuId", "==", row.skuId))
+      );
+      const anyInStock = allInvSnap.docs.some(d => (d.data().available ?? 0) > 0);
       await updateDoc(doc(db, COLLECTIONS.PRODUCTS, row.skuId), {
-        inStock: newQty > 0,
+        inStock: anyInStock,
         updatedAt: serverTimestamp(),
       });
 
-      toast.success(`Stock updated: ${row.productName}`);
+      toast.success(`Stock updated for ${row.productName}`);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to update stock. Please try again."));
     }
     setSaving(null);
   };

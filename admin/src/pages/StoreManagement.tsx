@@ -7,6 +7,7 @@ import { COLLECTIONS } from "../../../shared/config";
 import { Store } from "../../../shared/types";
 import { cleanFirestoreData } from "../lib/utils";
 import { Store as StoreIcon, MapPin, Phone, Mail, Clock, Plus, Edit2, Trash2, X } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 export default function StoreManagement() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -144,7 +145,7 @@ export default function StoreManagement() {
       }
       closeModal();
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyError(error, "Failed to save store. Please try again."));
     }
   };
 
@@ -155,7 +156,7 @@ export default function StoreManagement() {
       await deleteDoc(doc(db, COLLECTIONS.STORES, storeId));
       toast.success("Store deleted");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyError(error, "Failed to save store. Please try again."));
     }
   };
 

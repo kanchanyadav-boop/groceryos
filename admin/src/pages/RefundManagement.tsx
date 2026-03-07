@@ -8,6 +8,7 @@ import { COLLECTIONS } from "../../shared/config";
 import { Refund, RefundStatus } from "../../shared/types";
 import { format } from "date-fns";
 import { CheckCircle, XCircle, Clock, X } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 // NOTE: Actual Razorpay refund API call happens in Cloud Functions
 // This UI triggers the Cloud Function via Firestore status update
@@ -51,7 +52,7 @@ export default function RefundManagement() {
       });
       toast.success("Refund approved — processing via Razorpay");
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to approve refund. Please try again."));
     }
     setProcessing(null);
   };
@@ -65,10 +66,10 @@ export default function RefundManagement() {
         approvedBy: staffProfile?.id || "admin",
         updatedAt: serverTimestamp(),
       });
-      toast.success("Refund rejected");
+      toast.success("Refund request rejected");
       setRejectModal(null);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to reject refund. Please try again."));
     }
     setProcessing(null);
   };

@@ -59,13 +59,19 @@ export default function Billing() {
   }, [range]);
 
   // ── Computed stats ─────────────────────────────────────────────────────────
-  const captured = payments.filter(p => p.status === "captured");
-  const totalRevenue = captured.reduce((a, p) => a + p.amount, 0);
+  // Revenue = online captured payments + COD orders (which never create Payment docs).
+  // We derive all revenue from the orders collection to avoid double-counting.
+  const completedOrders = orders.filter(o => o.status !== "cancelled" && o.status !== "refunded");
+  const totalRevenue = completedOrders.reduce((a, o) => a + (o.totalAmount || 0), 0);
   const totalOrders = orders.length;
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  const avgOrderValue = completedOrders.length > 0
+    ? Math.round(totalRevenue / completedOrders.length)
+    : 0;
 
-  const methodBreakdown = payments.reduce((acc, p) => {
-    acc[p.method] = (acc[p.method] || 0) + (p.status === "captured" ? p.amount : 0);
+  // Payment method breakdown — COD from orders, others from captured payments
+  const methodBreakdown = completedOrders.reduce((acc, o) => {
+    const method = o.paymentMethod || "cod";
+    acc[method] = (acc[method] || 0) + (o.totalAmount || 0);
     return acc;
   }, {} as Record<string, number>);
 

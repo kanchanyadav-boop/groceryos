@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import {
   MapPin, Zap, Navigation, Phone, Star, Package, X, CheckCircle
 } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 // Initialized once at module level — not recreated on every function call
 const functions = getFunctions(app);
@@ -74,9 +75,9 @@ export default function Dispatch() {
       await updateDoc(doc(db, COLLECTIONS.AGENTS, agentId), {
         status: "busy", activeOrderId: orderId,
       });
-      toast.success("Agent assigned");
+      toast.success("Delivery agent assigned successfully");
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to assign agent. Please try again."));
     }
     setAssigning(null);
   };
@@ -88,7 +89,7 @@ export default function Dispatch() {
       const result = await fn({ orderId }) as any;
       toast.success(`Auto-assigned to ${result.data.agentName}`);
     } catch (err: any) {
-      toast.error(err.message || "No available agents");
+      toast.error(friendlyError(err, "No available agents nearby. Try assigning manually."));
     }
     setAutoAssigning(null);
   };

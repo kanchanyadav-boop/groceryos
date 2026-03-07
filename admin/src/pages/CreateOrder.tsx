@@ -10,6 +10,7 @@ import { Product, User, Address, OrderItem, PaymentMethod, DeliverySlot, Store }
 import { findStoreByPincode } from "../../../shared/storeUtils";
 import { cleanFirestoreData } from "../lib/utils";
 import { Search, Plus, Minus, Trash2, Phone, MapPin, Calendar, CreditCard, X, Store as StoreIcon } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 interface CartItem extends OrderItem {
   product: Product;
@@ -127,7 +128,7 @@ export default function CreateOrder() {
         toast("New customer - please enter details", { icon: "ℹ️" });
       }
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyError(error, "Failed to look up customer. Please try again."));
     }
     setCustomerLoading(false);
   };
@@ -226,7 +227,7 @@ export default function CreateOrder() {
         toast.success("New customer created!");
         return userRef.id;
       } catch (error: any) {
-        toast.error(`Failed to create customer: ${error.message}`);
+        toast.error(friendlyError(error, "Failed to create customer. Please try again."));
         return null;
       }
     } else if (customer) {
@@ -262,7 +263,7 @@ export default function CreateOrder() {
 
           toast.success("New address added!");
         } catch (error: any) {
-          toast.error(`Failed to add address: ${error.message}`);
+          toast.error(friendlyError(error, "Failed to save address. Please try again."));
         }
       }
       return customer.id;
@@ -356,7 +357,7 @@ export default function CreateOrder() {
       setNewAddress({ label: "Home", line1: "", line2: "", city: "", pincode: "" });
       setAssignedStore(null);
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyError(error, "Failed to create order. Please try again."));
     }
     setSubmitting(false);
   };
@@ -711,7 +712,7 @@ export default function CreateOrder() {
                           : "bg-gray-800 text-gray-400 hover:bg-gray-700"
                         }`}
                     >
-                      {slot === "AM" ? "Morning (8AM-12PM)" : "Evening (4PM-8PM)"}
+                      {slot === "AM" ? "Morning (9am–1pm)" : "Evening (2pm–7pm)"}
                     </button>
                   ))}
                 </div>

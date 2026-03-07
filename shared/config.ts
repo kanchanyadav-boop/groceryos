@@ -50,4 +50,5 @@ export const COLLECTIONS = {
   CHATS: "chats",
   NOTIFICATIONS: "notifications",
   INVENTORY_LOGS: "inventoryLogs",
+  SETTINGS: "settings",
 };

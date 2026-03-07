@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../../shared/config";
 import { SlotConfig, DeliverySlotsConfig } from "../../../shared/types";
 import { Clock, Plus, Trash2, Save, Info } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 const DEFAULT_CONFIG: DeliverySlotsConfig = {
   slots: [
@@ -72,7 +73,7 @@ export default function DeliverySlots() {
       });
       toast.success("Delivery slots saved");
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to save slot configuration. Please try again."));
     }
     setSaving(false);
   };

@@ -4,6 +4,7 @@ import {
   collection, query, orderBy, limit, startAfter, getDocs,
   doc, setDoc, updateDoc, deleteDoc, serverTimestamp, where, writeBatch, QueryDocumentSnapshot
 } from "firebase/firestore";
+import { friendlyError } from "../lib/errors";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 import { useForm } from "react-hook-form";
@@ -71,8 +72,8 @@ export default function SKUManagement() {
       setProducts(prev => reset ? docs : [...prev, ...docs]);
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(snap.docs.length === PAGE_SIZE);
-    } catch (err) {
-      toast.error("Failed to load products");
+    } catch (err: any) {
+      toast.error(friendlyError(err, "Failed to load products. Please refresh."));
     }
     setLoading(false);
   };
@@ -131,18 +132,35 @@ export default function SKUManagement() {
       } else {
         const newRef = doc(collection(db, COLLECTIONS.PRODUCTS));
         await setDoc(newRef, { ...payload, createdAt: serverTimestamp() });
-        // Init inventory
-        await setDoc(doc(db, COLLECTIONS.INVENTORY, newRef.id), {
-          skuId: newRef.id, quantity: 0, reserved: 0, available: 0,
-          lowStockThreshold: 10, updatedBy: "admin", updatedAt: serverTimestamp(),
-        });
-        toast.success("Product created");
+
+        // Create a zero-stock inventory record for every active store so the
+        // product immediately appears in the Inventory page (per-store, ready to restock).
+        const storesSnap = await getDocs(
+          query(collection(db, COLLECTIONS.STORES), where("isActive", "==", true))
+        );
+        if (!storesSnap.empty) {
+          const invBatch = writeBatch(db);
+          storesSnap.docs.forEach(storeDoc => {
+            invBatch.set(doc(db, COLLECTIONS.INVENTORY, `${storeDoc.id}_${newRef.id}`), {
+              skuId: newRef.id,
+              storeId: storeDoc.id,
+              quantity: 0,
+              reserved: 0,
+              available: 0,
+              lowStockThreshold: 10,
+              updatedBy: "admin",
+              updatedAt: serverTimestamp(),
+            });
+          });
+          await invBatch.commit();
+        }
+        toast.success("Product created — set stock levels in Inventory");
       }
 
       setShowModal(false);
       loadProducts(true);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, "Failed to save product. Please try again."));
     }
     setSaving(false);
   };

@@ -5,6 +5,7 @@ import { db } from "../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
 import toast from "react-hot-toast";
 import { Barcode, Search, Plus, Package, AlertCircle, CheckCircle } from "lucide-react";
+import { friendlyError } from "../lib/errors";
 
 interface OpenFoodFactsProduct {
   code: string;
@@ -174,7 +175,7 @@ export default function BarcodeProductImport() {
       setProductData(null);
       setBarcode("");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyError(error, "Failed to import product. Please try again."));
     }
   };
 
