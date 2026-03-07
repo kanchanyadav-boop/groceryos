@@ -13,25 +13,28 @@ import { format } from "date-fns";
 import { useAppStore } from "../../src/store";
 
 const STATUS_CONFIG: Record<OrderStatus, { color: string; emoji: string }> = {
-  confirmed:  { color: "#3B82F6", emoji: "✅" },
-  packed:     { color: "#F59E0B", emoji: "📦" },
+  confirmed: { color: "#3B82F6", emoji: "✅" },
+  packed: { color: "#F59E0B", emoji: "📦" },
   dispatched: { color: "#8B5CF6", emoji: "🛵" },
-  delivered:  { color: "#2ECC71", emoji: "🎉" },
-  cancelled:  { color: "#E05252", emoji: "❌" },
-  refunded:   { color: "#8A8A9A", emoji: "💰" },
+  delivered: { color: "#2ECC71", emoji: "🎉" },
+  cancelled: { color: "#E05252", emoji: "❌" },
+  refunded: { color: "#8A8A9A", emoji: "💰" },
 };
 
 export default function OrdersTab() {
-  const { firebaseUid } = useAuthStore();
+  const { user, firebaseUid } = useAuthStore();
   const { setActiveOrderCount } = useAppStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!firebaseUid) return;
+    // Use the stable phone-doc ID (e.g. "919876543210") to query orders.
+    // The placeOrder CF tags orders with this ID.
+    const userId = user?.id || firebaseUid;
+    if (!userId) return;
     const q = query(
       collection(db, COLLECTIONS.ORDERS),
-      where("userId", "==", firebaseUid),
+      where("userId", "==", userId),
       orderBy("createdAt", "desc"),
       limit(30)
     );
@@ -43,7 +46,7 @@ export default function OrdersTab() {
       setActiveOrderCount(active);
     });
     return () => unsub();
-  }, [firebaseUid]);
+  }, [user?.id, firebaseUid]);
 
   const renderOrder = ({ item: order }: { item: Order }) => {
     const cfg = STATUS_CONFIG[order.status];
@@ -61,11 +64,11 @@ export default function OrdersTab() {
             <Text style={styles.orderDate}>
               {order.createdAt
                 ? format(
-                    order.createdAt instanceof Timestamp
-                      ? order.createdAt.toDate()
-                      : new Date(order.createdAt),
-                    "dd MMM yyyy, hh:mm a"
-                  )
+                  order.createdAt instanceof Timestamp
+                    ? order.createdAt.toDate()
+                    : new Date(order.createdAt),
+                  "dd MMM yyyy, hh:mm a"
+                )
                 : "—"}
             </Text>
           </View>

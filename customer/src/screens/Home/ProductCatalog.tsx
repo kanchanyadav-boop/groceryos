@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import {
-  View, Text, FlatList, TextInput, TouchableOpacity, Image,
-  StyleSheet, ScrollView, RefreshControl, Dimensions,
+  View, Text, FlatList, TextInput, TouchableOpacity,
+  StyleSheet, ScrollView, RefreshControl,
 } from "react-native";
 import {
-  collection, query, where, orderBy, limit,
+  collection, query, where, limit,
   getDocs,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -15,91 +15,8 @@ import { router } from "expo-router";
 import DrawerMenu from "../../components/DrawerMenu";
 import PincodeGate from "../../components/PincodeGate";
 import { CATEGORY_LIST } from "../../shared/categories";
+import ProductCard, { CARD_WIDTH } from "../../components/ProductCard";
 
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.38;
-
-interface ProductCardProps {
-  product: Product;
-  horizontal?: boolean;
-}
-
-function ProductCard({ product, horizontal = false }: ProductCardProps) {
-  const { addItem, updateQty, getItemQty } = useCartStore();
-  const qty = getItemQty(product.id);
-  const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
-
-  return (
-    <TouchableOpacity
-      style={[styles.card, horizontal && styles.cardHorizontal]}
-      onPress={() => router.push(`/product/${product.id}`)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.imageContainer}>
-        {product.imageUrls?.[0] ? (
-          <Image source={{ uri: product.imageUrls[0] }} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={[styles.image, styles.imageFallback]}>
-            <Text style={styles.imageFallbackText}>🛒</Text>
-          </View>
-        )}
-        {discount > 0 && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{discount}% off</Text>
-          </View>
-        )}
-        {!product.inStock && (
-          <View style={styles.outOfStockOverlay}>
-            <Text style={styles.outOfStockText}>Out of Stock</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardBody}>
-        <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-        <Text style={styles.productUnit}>{product.unit}</Text>
-
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{product.price}</Text>
-          {product.mrp > product.price && (
-            <Text style={styles.mrp}>₹{product.mrp}</Text>
-          )}
-        </View>
-
-        {product.inStock ? (
-          qty > 0 ? (
-            <View style={styles.qtyControl}>
-              <TouchableOpacity
-                style={styles.qtyBtn}
-                onPress={() => updateQty(product.id, qty - 1)}
-              >
-                <Text style={styles.qtyBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.qtyText}>{qty}</Text>
-              <TouchableOpacity
-                style={styles.qtyBtn}
-                onPress={() => addItem(product)}
-              >
-                <Text style={styles.qtyBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={() => addItem(product)}
-            >
-              <Text style={styles.addBtnText}>+ Add</Text>
-            </TouchableOpacity>
-          )
-        ) : (
-          <View style={styles.addBtnDisabled}>
-            <Text style={styles.addBtnDisabledText}>Unavailable</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 interface CategorySectionProps {
   category: string;
@@ -198,12 +115,12 @@ export default function ProductCatalog() {
 
       // Group products by category
       const grouped: Record<string, Product[]> = {};
-      
+
       CATEGORY_LIST.forEach(category => {
         const categoryProducts = products
           .filter(p => p.category === category)
           .slice(0, 10); // Limit to 10 per category for performance
-        
+
         if (categoryProducts.length > 0) {
           grouped[category] = categoryProducts;
         }
@@ -332,7 +249,7 @@ export default function ProductCatalog() {
       {/* Pincode Gate — shown when no pincode is selected */}
       <PincodeGate
         visible={!selectedPincode}
-        onConfirmed={() => {/* state update handled inside PincodeGate */}}
+        onConfirmed={() => {/* state update handled inside PincodeGate */ }}
       />
 
       {/* Header */}
@@ -460,65 +377,66 @@ const styles = StyleSheet.create({
   searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: { flex: 1, color: "#fff", fontSize: 14 },
   scrollContent: { paddingBottom: 120 },
-  
+
   // Best Deals Section
   dealsSection: { marginBottom: 24 },
   dealsSectionHeader: { paddingHorizontal: 20, marginBottom: 12 },
   dealsSectionTitle: { fontSize: 20, fontWeight: "900", color: "#fff", marginBottom: 4 },
   dealsSectionSubtitle: { fontSize: 13, color: "#2ECC71", fontWeight: "600" },
-  
+
   // Category Section
   categorySection: { marginBottom: 24 },
   categorySectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 },
   categorySectionTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
   seeAllText: { fontSize: 14, color: "#2ECC71", fontWeight: "600" },
-  
+
   // Horizontal List
   horizontalList: { paddingHorizontal: 16, gap: 12 },
-  
+
   // Product Card
   card: { flex: 1, backgroundColor: "#16181F", borderRadius: 16, overflow: "hidden", marginBottom: 10, borderWidth: 1, borderColor: "#262830" },
   cardHorizontal: { width: CARD_WIDTH, flex: 0 },
   imageContainer: { position: "relative" },
-  image: { width: "100%", height: 100 },
+  image: { width: "100%", height: 80 },
   imageFallback: { backgroundColor: "#262830", alignItems: "center", justifyContent: "center" },
   imageFallbackText: { fontSize: 32 },
   discountBadge: { position: "absolute", top: 6, left: 6, backgroundColor: "#E05252", borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
   discountText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   outOfStockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
   outOfStockText: { color: "#fff", fontWeight: "700", fontSize: 11 },
-  cardBody: { padding: 8 },
-  productName: { color: "#F0F0F5", fontSize: 12, fontWeight: "600", lineHeight: 16 },
-  productUnit: { color: "#4E4E60", fontSize: 10, marginTop: 1 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5 },
-  price: { color: "#2ECC71", fontWeight: "900", fontSize: 14 },
-  mrp: { color: "#4E4E60", fontSize: 11, textDecorationLine: "line-through" },
-  addBtn: { marginTop: 6, backgroundColor: "#2ECC7120", borderWidth: 1, borderColor: "#2ECC71", borderRadius: 7, paddingVertical: 5, alignItems: "center" },
-  addBtnText: { color: "#2ECC71", fontWeight: "700", fontSize: 12 },
-  addBtnDisabled: { marginTop: 6, backgroundColor: "#262830", borderRadius: 7, paddingVertical: 5, alignItems: "center" },
-  addBtnDisabledText: { color: "#4E4E60", fontWeight: "600", fontSize: 11 },
-  qtyControl: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6, backgroundColor: "#2ECC71", borderRadius: 7, overflow: "hidden" },
-  qtyBtn: { width: 30, height: 28, alignItems: "center", justifyContent: "center" },
-  qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 16, lineHeight: 18 },
-  qtyText: { color: "#000", fontWeight: "900", fontSize: 13 },
-  
+  cardBody: { flex: 1, padding: 6, justifyContent: "space-between" },
+  cardTextContent: { flex: 1 },
+  productName: { color: "#F0F0F5", fontSize: 11, fontWeight: "600", lineHeight: 14 },
+  productUnit: { color: "#4E4E60", fontSize: 9, marginTop: 1 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
+  price: { color: "#2ECC71", fontWeight: "900", fontSize: 12 },
+  mrp: { color: "#4E4E60", fontSize: 10, textDecorationLine: "line-through" },
+  addBtn: { marginTop: 4, backgroundColor: "#2ECC7120", borderWidth: 1, borderColor: "#2ECC71", borderRadius: 6, paddingVertical: 4, alignItems: "center" },
+  addBtnText: { color: "#2ECC71", fontWeight: "700", fontSize: 11 },
+  addBtnDisabled: { marginTop: 4, backgroundColor: "#262830", borderRadius: 6, paddingVertical: 4, alignItems: "center" },
+  addBtnDisabledText: { color: "#4E4E60", fontWeight: "600", fontSize: 10 },
+  qtyControl: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4, backgroundColor: "#2ECC71", borderRadius: 6, overflow: "hidden" },
+  qtyBtn: { width: 26, height: 24, alignItems: "center", justifyContent: "center" },
+  qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 14, lineHeight: 16 },
+  qtyText: { color: "#000", fontWeight: "900", fontSize: 12 },
+
   // Search Results Grid
   list: { paddingHorizontal: 12, paddingBottom: 120 },
   row: { gap: 10, paddingHorizontal: 4 },
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   emptyText: { textAlign: "center", color: "#4E4E60", marginTop: 60, fontSize: 14 },
-  
+
   // Floating Cart
   floatingCart: { position: "absolute", bottom: 24, left: 20, right: 20, backgroundColor: "#2ECC71", borderRadius: 16, paddingVertical: 14, alignItems: "center", shadowColor: "#2ECC71", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 },
   floatingCartText: { color: "#000", fontWeight: "900", fontSize: 14, letterSpacing: 0.3 },
 
   // Category chip strip
-  chipStrip: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
-  chip: { backgroundColor: "#1E2028", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: "#262830" },
-  chipText: { color: "#7A7A8E", fontSize: 12, fontWeight: "600" },
+  chipStrip: { paddingHorizontal: 16, gap: 6, paddingBottom: 10 },
+  chip: { backgroundColor: "#1E2028", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "#2ECC7130" },
+  chipText: { color: "#C8C8D8", fontSize: 12, fontWeight: "600" },
 
   // Skeleton
-  skeletonCard: { width: CARD_WIDTH, backgroundColor: "#16181F", borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "#262830" },
-  skeletonImage: { width: "100%", height: 100, backgroundColor: "#262830" },
+  skeletonCard: { width: CARD_WIDTH, backgroundColor: "#16181F", borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "#262830" },
+  skeletonImage: { width: "100%", height: 80, backgroundColor: "#262830" },
   skeletonLine: { height: 12, backgroundColor: "#262830", borderRadius: 6, width: "80%" },
 });

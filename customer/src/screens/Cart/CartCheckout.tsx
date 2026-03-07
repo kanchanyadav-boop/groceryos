@@ -8,8 +8,7 @@ import { useCartStore, useAuthStore, useAppStore } from "../../store";
 import { APP_CONFIG, COLLECTIONS, RAZORPAY_KEY_ID } from "../../shared/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, getDoc } from "firebase/firestore";
-import { signInAnonymously } from "firebase/auth";
-import app, { auth, db, functions } from "../../lib/firebase";
+import app, { auth, db, functions, ensureAuth } from "../../lib/firebase";
 import { router } from "expo-router";
 import { format, addDays } from "date-fns";
 import { SlotConfig, DeliverySlotsConfig } from "../../shared/types";
@@ -131,19 +130,12 @@ export default function CartCheckout() {
 
     setLoading(true);
     try {
-      // ── Ensure we have a valid Firebase Auth session ───────────────────────
-      // In dev mode the customer uses signInAnonymously().  Expo tunnel sessions
-      // can silently lose the auth state, so we do a layered recovery:
-      //   1. Try forceRefresh on existing currentUser
-      //   2. If no currentUser, re-sign in anonymously
-      let currentUser = auth.currentUser;
-      if (!currentUser) {
-        // Session was lost — silently re-authenticate
-        console.warn("[placeOrder] No currentUser, re-signing in anonymously…");
-        const cred = await signInAnonymously(auth);
-        currentUser = cred.user;
-      }
-      // Force-refresh to guarantee a valid ID token for the CF call
+      // ── Guaranteed valid Firebase Auth session ─────────────────────────────
+      // ensureAuth() handles all edge cases:
+      //   • Auth persistence still loading → waits for it
+      //   • Session lost (app restart, tunnel drop) → re-authenticates silently
+      //   • Already signed in → returns immediately
+      const currentUser = await ensureAuth();
       await currentUser.getIdToken(/* forceRefresh= */ true);
 
       const placeOrderFn = httpsCallable(functions, "placeOrder");
