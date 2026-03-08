@@ -65,7 +65,7 @@ export default function CategoryProducts() {
 
   useEffect(() => {
     if (category) fetchProducts();
-  }, [category]);
+  }, [category, serviceableStoreId]);
 
   const filteredProducts = selectedSubcategory
     ? products.filter(p => p.subcategory === selectedSubcategory)

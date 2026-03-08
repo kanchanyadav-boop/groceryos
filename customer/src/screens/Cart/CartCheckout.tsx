@@ -11,6 +11,7 @@ import { auth, db, ensureAuth } from "../../lib/firebase";
 import { router } from "expo-router";
 import { format, addDays } from "date-fns";
 import { SlotConfig, DeliverySlotsConfig } from "../../shared/types";
+import { useTheme } from "../../hooks/useTheme";
 
 // After: npx expo install react-native-razorpay  →  uncomment below
 // import RazorpayCheckout from "react-native-razorpay";
@@ -37,6 +38,7 @@ function getAvailableSlotsForDate(date: string, config: DeliverySlotsConfig): Sl
 }
 
 export default function CartCheckout() {
+  const { colors } = useTheme();
   const { items, updateQty, clearCart, getItemCount } = useCartStore();
   const { user, firebaseUid, isLoggedIn } = useAuthStore();
   const { selectedAddress, selectedSlot, setSelectedSlot, selectedPincode, serviceableStoreId } = useAppStore();
@@ -44,6 +46,8 @@ export default function CartCheckout() {
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [slotConfig, setSlotConfig] = useState<DeliverySlotsConfig>(FALLBACK_SLOTS);
+
+  const styles = getStyles(colors);
 
   // Fetch admin-defined slot config from Firestore
   useEffect(() => {
@@ -451,7 +455,7 @@ export default function CartCheckout() {
           disabled={loading}
         >
           {loading
-            ? <ActivityIndicator color="#000" />
+            ? <ActivityIndicator color={colors.bg} />
             : <>
               <Text style={styles.placeBtnText}>Place Order</Text>
               <Text style={styles.placeBtnAmt}> · ₹{total}</Text>
@@ -464,82 +468,82 @@ export default function CartCheckout() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
-  emptyContainer: { flex: 1, backgroundColor: "#0F1117", alignItems: "center", justifyContent: "center", padding: 32 },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  emptyContainer: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { color: "#8A8A9A", fontSize: 16, marginBottom: 24 },
-  shopBtn: { backgroundColor: "#2ECC71", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
-  shopBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
-  loginGateTitle: { color: "#fff", fontSize: 22, fontWeight: "900", marginBottom: 10 },
-  loginGateSub: { color: "#8A8A9A", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 28 },
+  emptyTitle: { color: colors.textSecondary, fontSize: 16, marginBottom: 24 },
+  shopBtn: { backgroundColor: colors.green, borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
+  shopBtnText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
+  loginGateTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", marginBottom: 10 },
+  loginGateSub: { color: colors.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 28 },
   loginGateBack: { marginTop: 16, paddingVertical: 8 },
-  loginGateBackText: { color: "#8A8A9A", fontSize: 14 },
+  loginGateBackText: { color: colors.textSecondary, fontSize: 14 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
-  backArrow: { color: "#fff", fontSize: 22, marginRight: 12 },
-  headerTitle: { flex: 1, color: "#fff", fontSize: 20, fontWeight: "900" },
-  itemCount: { color: "#8A8A9A", fontSize: 13 },
-  section: { marginHorizontal: 16, marginBottom: 14, backgroundColor: "#16181F", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#262830" },
+  backArrow: { color: colors.textPrimary, fontSize: 22, marginRight: 12 },
+  headerTitle: { flex: 1, color: colors.textPrimary, fontSize: 20, fontWeight: "900" },
+  itemCount: { color: colors.textSecondary, fontSize: 13 },
+  section: { marginHorizontal: 16, marginBottom: 14, backgroundColor: colors.surface, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: colors.border },
   sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  sectionTitle: { color: "#7A7A8E", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 },
-  changeLink: { color: "#2ECC71", fontWeight: "700", fontSize: 13 },
+  sectionTitle: { color: colors.textTertiary, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 },
+  changeLink: { color: colors.green, fontWeight: "700", fontSize: 13 },
   cartItem: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
   itemImage: { width: 52, height: 52, borderRadius: 10 },
-  imgFallback: { backgroundColor: "#262830", alignItems: "center", justifyContent: "center" },
+  imgFallback: { backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" },
   itemInfo: { flex: 1 },
-  itemName: { color: "#F0F0F5", fontSize: 13, fontWeight: "600" },
-  itemUnit: { color: "#4E4E60", fontSize: 11, marginTop: 2 },
-  itemPrice: { color: "#2ECC71", fontSize: 12, fontWeight: "700", marginTop: 3 },
-  qtyControl: { flexDirection: "row", alignItems: "center", backgroundColor: "#2ECC71", borderRadius: 8, overflow: "hidden" },
+  itemName: { color: colors.textPrimary, fontSize: 13, fontWeight: "600" },
+  itemUnit: { color: colors.textTertiary, fontSize: 11, marginTop: 2 },
+  itemPrice: { color: colors.green, fontSize: 12, fontWeight: "700", marginTop: 3 },
+  qtyControl: { flexDirection: "row", alignItems: "center", backgroundColor: colors.green, borderRadius: 8, overflow: "hidden" },
   qtyBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
-  qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 18 },
-  qtyText: { color: "#000", fontWeight: "900", fontSize: 14, paddingHorizontal: 6 },
-  itemTotal: { color: "#fff", fontWeight: "800", fontSize: 14, minWidth: 52, textAlign: "right" },
-  addressCard: { backgroundColor: "#1E2028", borderRadius: 12, padding: 12 },
-  addressLabel: { color: "#fff", fontWeight: "700", fontSize: 13, marginBottom: 6 },
-  addressLine: { color: "#F0F0F5", fontSize: 13 },
-  addressCity: { color: "#8A8A9A", fontSize: 12, marginTop: 3 },
-  addAddressBtn: { borderWidth: 1, borderColor: "#2ECC7140", borderRadius: 12, paddingVertical: 16, alignItems: "center" },
-  addAddressText: { color: "#2ECC71", fontWeight: "600", fontSize: 14 },
-  dateChip: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: "#1E2028", borderRadius: 12, marginRight: 8, borderWidth: 1, borderColor: "#262830" },
-  dateChipActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7120" },
-  dateChipText: { color: "#8A8A9A", fontSize: 13, fontWeight: "600" },
-  dateChipTextActive: { color: "#2ECC71" },
+  qtyBtnText: { color: colors.bg, fontWeight: "900", fontSize: 18 },
+  qtyText: { color: colors.bg, fontWeight: "900", fontSize: 14, paddingHorizontal: 6 },
+  itemTotal: { color: colors.textPrimary, fontWeight: "800", fontSize: 14, minWidth: 52, textAlign: "right" },
+  addressCard: { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 12 },
+  addressLabel: { color: colors.textPrimary, fontWeight: "700", fontSize: 13, marginBottom: 6 },
+  addressLine: { color: colors.textPrimary, fontSize: 13 },
+  addressCity: { color: colors.textSecondary, fontSize: 12, marginTop: 3 },
+  addAddressBtn: { borderWidth: 1, borderColor: colors.greenBorder, borderRadius: 12, paddingVertical: 16, alignItems: "center" },
+  addAddressText: { color: colors.green, fontWeight: "600", fontSize: 14 },
+  dateChip: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surfaceAlt, borderRadius: 12, marginRight: 8, borderWidth: 1, borderColor: colors.border },
+  dateChipActive: { borderColor: colors.green, backgroundColor: colors.greenDim },
+  dateChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: "600" },
+  dateChipTextActive: { color: colors.green },
   slotRow: { gap: 8 },
-  slotChip: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#1E2028", borderRadius: 14, borderWidth: 1, borderColor: "#262830" },
-  slotChipActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7115" },
+  slotChip: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: colors.surfaceAlt, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
+  slotChipActive: { borderColor: colors.green, backgroundColor: colors.greenDim },
   slotEmoji: { fontSize: 22 },
-  slotLabel: { color: "#8A8A9A", fontWeight: "700", fontSize: 14 },
-  slotLabelActive: { color: "#2ECC71" },
-  slotTime: { color: "#4E4E60", fontSize: 12, marginTop: 2 },
-  slotCheck: { color: "#2ECC71", fontWeight: "900", fontSize: 16 },
-  noSlotsBox: { backgroundColor: "#1E2028", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#262830" },
-  noSlotsText: { color: "#7A7A8E", fontSize: 13, lineHeight: 20, textAlign: "center" },
-  payOption: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: "#1E2028", borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: "#262830" },
-  payOptionActive: { borderColor: "#2ECC71", backgroundColor: "#2ECC7110" },
+  slotLabel: { color: colors.textSecondary, fontWeight: "700", fontSize: 14 },
+  slotLabelActive: { color: colors.green },
+  slotTime: { color: colors.textTertiary, fontSize: 12, marginTop: 2 },
+  slotCheck: { color: colors.green, fontWeight: "900", fontSize: 16 },
+  noSlotsBox: { backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border },
+  noSlotsText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20, textAlign: "center" },
+  payOption: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: colors.surfaceAlt, borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+  payOptionActive: { borderColor: colors.green, backgroundColor: colors.greenDim },
   payOptionDisabled: { opacity: 0.5 },
   payIcon: { fontSize: 22 },
-  payLabel: { color: "#7A7A8E", fontWeight: "700", fontSize: 14 },
-  payLabelActive: { color: "#F0F0F5" },
-  payLabelDisabled: { color: "#4E4E60" },
-  paySub: { color: "#4E4E60", fontSize: 11, marginTop: 2 },
-  comingSoonBadge: { backgroundColor: "#2D2D40", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  comingSoonText: { color: "#4E4E60", fontSize: 10, fontWeight: "700" },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#2D3D55", alignItems: "center", justifyContent: "center" },
-  radioActive: { borderColor: "#2ECC71" },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#2ECC71" },
+  payLabel: { color: colors.textSecondary, fontWeight: "700", fontSize: 14 },
+  payLabelActive: { color: colors.textPrimary },
+  payLabelDisabled: { color: colors.textTertiary },
+  paySub: { color: colors.textTertiary, fontSize: 11, marginTop: 2 },
+  comingSoonBadge: { backgroundColor: colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  comingSoonText: { color: colors.textTertiary, fontSize: 10, fontWeight: "700" },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  radioActive: { borderColor: colors.green },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.green },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  summaryLabel: { color: "#8A8A9A", fontSize: 14 },
-  summaryValue: { color: "#F0F0F5", fontSize: 14, fontWeight: "600" },
-  freeText: { color: "#2ECC71", fontWeight: "700", fontSize: 14 },
-  freeHint: { color: "#8A8A9A", fontSize: 11, marginBottom: 10 },
-  totalRow: { borderTopWidth: 1, borderTopColor: "#262830", paddingTop: 12, marginTop: 4, marginBottom: 0 },
-  totalLabel: { color: "#fff", fontSize: 16, fontWeight: "900" },
-  totalValue: { color: "#2ECC71", fontSize: 22, fontWeight: "900" },
+  summaryLabel: { color: colors.textSecondary, fontSize: 14 },
+  summaryValue: { color: colors.textPrimary, fontSize: 14, fontWeight: "600" },
+  freeText: { color: colors.green, fontWeight: "700", fontSize: 14 },
+  freeHint: { color: colors.textSecondary, fontSize: 11, marginBottom: 10 },
+  totalRow: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, marginTop: 4, marginBottom: 0 },
+  totalLabel: { color: colors.textPrimary, fontSize: 16, fontWeight: "900" },
+  totalValue: { color: colors.green, fontSize: 22, fontWeight: "900" },
   placeSection: { paddingHorizontal: 16, paddingBottom: 48 },
-  placeBtn: { backgroundColor: "#2ECC71", borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  placeBtn: { backgroundColor: colors.green, borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },
   placeBtnDisabled: { opacity: 0.6 },
-  placeBtnText: { color: "#000", fontWeight: "900", fontSize: 17 },
-  placeBtnAmt: { color: "#000", fontWeight: "700", fontSize: 17, opacity: 0.8 },
-  disclaimer: { color: "#3D3D50", fontSize: 11, textAlign: "center", marginTop: 12 },
+  placeBtnText: { color: colors.bg, fontWeight: "900", fontSize: 17 },
+  placeBtnAmt: { color: colors.bg, fontWeight: "700", fontSize: 17, opacity: 0.8 },
+  disclaimer: { color: colors.textTertiary, fontSize: 11, textAlign: "center", marginTop: 12 },
 });

@@ -11,6 +11,7 @@ import { Order, Agent, OrderStatus } from "../../shared/types";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
+import { useTheme } from "../../hooks/useTheme";
 
 const STATUS_STEPS: { status: OrderStatus; label: string; icon: string }[] = [
   { status: "confirmed", label: "Order Confirmed", icon: "✅" },
@@ -20,12 +21,15 @@ const STATUS_STEPS: { status: OrderStatus; label: string; icon: string }[] = [
 ];
 
 export default function OrderTracking() {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const styles = getStyles(colors);
 
   // Pulse animation for live indicator
   useEffect(() => {
@@ -92,7 +96,7 @@ export default function OrderTracking() {
                 longitude: order.deliveryAddress?.location?.lng || 77.5946,
               }}
               title="Your Location"
-              pinColor="#2ECC71"
+              pinColor={colors.green}
             />
 
             {/* Agent Live Location */}
@@ -251,50 +255,50 @@ export default function OrderTracking() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
-  loadingContainer: { flex: 1, backgroundColor: "#0F1117", alignItems: "center", justifyContent: "center" },
-  loadingText: { color: "#8A8A9A" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  loadingContainer: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" },
+  loadingText: { color: colors.textSecondary },
   mapContainer: { height: 260, position: "relative" },
   map: { flex: 1 },
-  agentMarker: { backgroundColor: "#fff", borderRadius: 20, padding: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 },
+  agentMarker: { backgroundColor: colors.bg, borderRadius: 20, padding: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 },
   liveBadge: { position: "absolute", top: 12, right: 12, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#E05252" },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.red },
   liveText: { color: "#fff", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
-  sheet: { backgroundColor: "#0F1117", borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20 },
+  sheet: { backgroundColor: colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20 },
   sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12, padding: 20, paddingTop: 28 },
-  backArrow: { color: "#fff", fontSize: 22 },
-  orderTitle: { color: "#fff", fontWeight: "900", fontSize: 16 },
-  orderSubtitle: { color: "#8A8A9A", fontSize: 12, marginTop: 2 },
-  orderAmount: { color: "#2ECC71", fontWeight: "900", fontSize: 18 },
-  agentCard: { flexDirection: "row", alignItems: "center", gap: 14, marginHorizontal: 20, marginBottom: 8, backgroundColor: "#16181F", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#2ECC7130" },
-  agentAvatar: { width: 48, height: 48, backgroundColor: "#2ECC7120", borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  agentName: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  agentVehicle: { color: "#8A8A9A", fontSize: 12 },
-  eta: { color: "#2ECC71", fontSize: 12, fontWeight: "600", marginTop: 3 },
-  callBtn: { width: 40, height: 40, backgroundColor: "#1E2028", borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  backArrow: { color: colors.textPrimary, fontSize: 22 },
+  orderTitle: { color: colors.textPrimary, fontWeight: "900", fontSize: 16 },
+  orderSubtitle: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+  orderAmount: { color: colors.green, fontWeight: "900", fontSize: 18 },
+  agentCard: { flexDirection: "row", alignItems: "center", gap: 14, marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.greenBorder },
+  agentAvatar: { width: 48, height: 48, backgroundColor: colors.greenDim, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  agentName: { color: colors.textPrimary, fontWeight: "700", fontSize: 14 },
+  agentVehicle: { color: colors.textSecondary, fontSize: 12 },
+  eta: { color: colors.green, fontSize: 12, fontWeight: "600", marginTop: 3 },
+  callBtn: { width: 40, height: 40, backgroundColor: colors.surfaceAlt, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   timeline: { paddingHorizontal: 20, paddingVertical: 16 },
-  sectionTitle: { color: "#7A7A8E", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
+  sectionTitle: { color: colors.textTertiary, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
   timelineItem: { flexDirection: "row", gap: 14 },
   timelineLeft: { alignItems: "center", width: 32 },
-  timelineDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#262830", borderWidth: 2, borderColor: "#2D3D55", alignItems: "center", justifyContent: "center" },
-  timelineDotDone: { backgroundColor: "#2ECC7120", borderColor: "#2ECC71" },
-  timelineDotCurrent: { backgroundColor: "#2ECC7130", borderColor: "#2ECC71", shadowColor: "#2ECC71", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 },
-  timelineLine: { width: 2, flex: 1, backgroundColor: "#262830", marginVertical: 4, minHeight: 20 },
-  timelineLineDone: { backgroundColor: "#2ECC71" },
+  timelineDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  timelineDotDone: { backgroundColor: colors.greenDim, borderColor: colors.green },
+  timelineDotCurrent: { backgroundColor: colors.greenDim, borderColor: colors.green, shadowColor: colors.green, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 },
+  timelineLine: { width: 2, flex: 1, backgroundColor: colors.border, marginVertical: 4, minHeight: 20 },
+  timelineLineDone: { backgroundColor: colors.green },
   timelineContent: { flex: 1, paddingBottom: 20 },
-  timelineLabel: { color: "#4E4E60", fontSize: 14, fontWeight: "600" },
-  timelineLabelDone: { color: "#F0F0F5" },
-  timelineTime: { color: "#8A8A9A", fontSize: 11, marginTop: 3 },
-  itemsSection: { marginHorizontal: 20, marginBottom: 16, backgroundColor: "#16181F", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#262830" },
+  timelineLabel: { color: colors.textTertiary, fontSize: 14, fontWeight: "600" },
+  timelineLabelDone: { color: colors.textPrimary },
+  timelineTime: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
+  itemsSection: { marginHorizontal: 20, marginBottom: 16, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
   orderItem: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  itemQty: { color: "#8A8A9A", fontSize: 13, width: 24 },
-  itemName: { flex: 1, color: "#7A7A8E", fontSize: 13 },
-  itemPrice: { color: "#F0F0F5", fontWeight: "700", fontSize: 13 },
-  divider: { height: 1, backgroundColor: "#262830", marginVertical: 10 },
-  addressSection: { marginHorizontal: 20, marginBottom: 20, backgroundColor: "#16181F", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#262830" },
-  addressText: { color: "#F0F0F5", fontSize: 14 },
-  addressCity: { color: "#8A8A9A", fontSize: 13, marginTop: 3 },
-  reviewBtn: { margin: 20, backgroundColor: "#2ECC71", borderRadius: 16, paddingVertical: 16, alignItems: "center", marginBottom: 40 },
-  reviewBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  itemQty: { color: colors.textSecondary, fontSize: 13, width: 24 },
+  itemName: { flex: 1, color: colors.textSecondary, fontSize: 13 },
+  itemPrice: { color: colors.textPrimary, fontWeight: "700", fontSize: 13 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
+  addressSection: { marginHorizontal: 20, marginBottom: 20, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
+  addressText: { color: colors.textPrimary, fontSize: 14 },
+  addressCity: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
+  reviewBtn: { margin: 20, backgroundColor: colors.green, borderRadius: 16, paddingVertical: 16, alignItems: "center", marginBottom: 40 },
+  reviewBtnText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
 });

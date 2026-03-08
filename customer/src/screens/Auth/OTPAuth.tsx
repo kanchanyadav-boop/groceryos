@@ -24,14 +24,18 @@ import { auth, db } from "../../lib/firebase";
 import { useAuthStore, useLoaderStore, useCartStore, useAppStore } from "../../store";
 import { User } from "../../shared/types";
 import { router } from "expo-router";
+import { useTheme } from "../../hooks/useTheme";
 
 export default function OTPAuth() {
+  const { colors } = useTheme();
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { setUser } = useAuthStore();
   const { showLoader, hideLoader } = useLoaderStore();
+
+  const styles = getStyles(colors);
 
   const digits = phone.replace(/\D/g, "");
 
@@ -133,7 +137,7 @@ export default function OTPAuth() {
             value={phone}
             onChangeText={t => { setPhone(t); if (phoneError) setPhoneError(""); }}
             placeholder="9876543210"
-            placeholderTextColor="#4E4E60"
+            placeholderTextColor={colors.textTertiary}
             keyboardType="phone-pad"
             maxLength={10}
             editable={!loading}
@@ -147,7 +151,7 @@ export default function OTPAuth() {
           disabled={loading}
         >
           {loading
-            ? <ActivityIndicator color="#000" size="small" />
+            ? <ActivityIndicator color={colors.bg} size="small" />
             : <Text style={styles.btnText}>Continue →</Text>
           }
         </TouchableOpacity>
@@ -164,32 +168,32 @@ export default function OTPAuth() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   inner: { flex: 1, padding: 28, justifyContent: "center" },
   logo: { fontSize: 48, textAlign: "center", marginBottom: 12 },
-  title: { fontSize: 28, fontWeight: "900", color: "#fff", textAlign: "center" },
-  subtitle: { fontSize: 14, color: "#8A8A9A", textAlign: "center", marginBottom: 40 },
-  label: { color: "#7A7A8E", fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  title: { fontSize: 28, fontWeight: "900", color: colors.green, textAlign: "center" },
+  subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 40 },
+  label: { color: colors.textTertiary, fontSize: 13, fontWeight: "600", marginBottom: 8 },
   phoneRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
   countryCode: {
-    width: 56, backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830",
+    width: 56, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
     borderRadius: 14, alignItems: "center", justifyContent: "center",
   },
-  countryCodeText: { color: "#7A7A8E", fontWeight: "700", fontSize: 14 },
+  countryCodeText: { color: colors.textSecondary, fontWeight: "700", fontSize: 14 },
   phoneInput: {
-    flex: 1, backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830",
-    borderRadius: 14, paddingHorizontal: 16, height: 52, color: "#fff", fontSize: 18, letterSpacing: 2,
+    flex: 1, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 14, paddingHorizontal: 16, height: 52, color: colors.textPrimary, fontSize: 18, letterSpacing: 2,
   },
-  inputError: { borderColor: "#E05252" },
+  inputError: { borderColor: colors.red },
   btn: {
-    backgroundColor: "#2ECC71", borderRadius: 14, height: 52,
+    backgroundColor: colors.green, borderRadius: 14, height: 52,
     alignItems: "center", justifyContent: "center", marginTop: 16, marginBottom: 12,
   },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: "#000", fontWeight: "900", fontSize: 16 },
-  errorText: { color: "#E05252", fontSize: 12, marginBottom: 8, marginTop: 2 },
+  btnText: { color: colors.bg, fontWeight: "900", fontSize: 16 },
+  errorText: { color: colors.red, fontSize: 12, marginBottom: 8, marginTop: 2 },
   skipBtn: { alignItems: "center", paddingVertical: 12, marginTop: 4 },
-  skipText: { color: "#8A8A9A", fontSize: 14, fontWeight: "500" },
-  terms: { color: "#3D3D50", fontSize: 11, textAlign: "center", marginTop: 16, lineHeight: 16 },
+  skipText: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
+  terms: { color: colors.textTertiary, fontSize: 11, textAlign: "center", marginTop: 16, lineHeight: 16 },
 });

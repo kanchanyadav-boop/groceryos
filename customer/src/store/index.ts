@@ -118,11 +118,13 @@ interface AppStore {
   // Pincode serviceability
   selectedPincode: string | null;
   serviceableStoreId: string | null;
+  theme: 'light' | 'dark';
   setSelectedAddress: (address: Address) => void;
   setSelectedSlot: (slot: { date: string; slot: string } | null) => void;
   setActiveOrderCount: (count: number) => void;
   setSelectedPincode: (pincode: string | null) => void;
   setServiceableStoreId: (storeId: string | null) => void;
+  setTheme: (theme: 'light' | 'dark') => void;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -133,11 +135,13 @@ export const useAppStore = create<AppStore>()(
       activeOrderCount: 0,
       selectedPincode: null,
       serviceableStoreId: null,
+      theme: 'dark',
       setSelectedAddress: (address) => set({ selectedAddress: address }),
       setSelectedSlot: (slot) => set({ selectedSlot: slot }),
       setActiveOrderCount: (count) => set({ activeOrderCount: count }),
       setSelectedPincode: (pincode) => set({ selectedPincode: pincode }),
       setServiceableStoreId: (storeId) => set({ serviceableStoreId: storeId }),
+      setTheme: (theme) => set({ theme }),
     }),
     {
       name: "app-storage",
@@ -146,6 +150,7 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         selectedPincode: state.selectedPincode,
         serviceableStoreId: state.serviceableStoreId,
+        theme: state.theme,
       }),
     }
   )

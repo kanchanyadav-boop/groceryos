@@ -1,6 +1,7 @@
 // admin/src/pages/OrderManagement.tsx
 import { useState, useEffect, useMemo } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, where, limit, arrayUnion } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, where, limit, arrayUnion, Timestamp } from "firebase/firestore";
+import { format, startOfDay, endOfDay, subDays } from "date-fns";
 import { db } from "../lib/firebase";
 import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../shared/config";
@@ -24,25 +25,36 @@ export default function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [storeFilter, setStoreFilter] = useState<string>("all");
   const [updating, setUpdating] = useState<string | null>(null);
+  // Default to today; format as YYYY-MM-DD for the date input
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   useEffect(() => {
-    const q = query(collection(db, COLLECTIONS.ORDERS), orderBy("createdAt", "desc"), limit(200));
+    setLoading(true);
+    const day = new Date(selectedDate + "T00:00:00");
+    const from = Timestamp.fromDate(startOfDay(day));
+    const to   = Timestamp.fromDate(endOfDay(day));
+    const q = query(
+      collection(db, COLLECTIONS.ORDERS),
+      where("createdAt", ">=", from),
+      where("createdAt", "<=", to),
+      orderBy("createdAt", "desc"),
+    );
     const unsub = onSnapshot(q, snap => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [selectedDate]);
 
-  // Real-time agent list
+  // All agents — admin can assign any order to any agent regardless of status
   useEffect(() => {
-    const q = query(collection(db, COLLECTIONS.AGENTS), where("status", "==", "available"));
-    return onSnapshot(q, snap => {
+    return onSnapshot(collection(db, COLLECTIONS.AGENTS), snap => {
       setAgents(snap.docs.map(d => ({ id: d.id, ...d.data() } as Agent)));
     });
   }, []);
@@ -96,19 +108,21 @@ export default function OrderManagement() {
   };
 
   const assignAgent = async (orderId: string, agentId: string) => {
-    setUpdating(orderId);
+    setAssigningOrder(orderId);
     try {
       await updateDoc(doc(db, COLLECTIONS.ORDERS, orderId), {
-        agentId, updatedAt: serverTimestamp(),
+        agentId: agentId || null,
+        updatedAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, COLLECTIONS.AGENTS, agentId), {
-        status: "busy", activeOrderId: orderId,
-      });
-      toast.success("Delivery agent assigned successfully");
+      // Mark agent busy — don't track a single activeOrderId since agents carry multiple orders
+      if (agentId) {
+        await updateDoc(doc(db, COLLECTIONS.AGENTS, agentId), { status: "busy" });
+      }
+      toast.success("Agent assigned");
     } catch (err: any) {
       toast.error(friendlyError(err, "Failed to assign agent. Please try again."));
     }
-    setUpdating(null);
+    setAssigningOrder(null);
   };
 
   // Apply store filter first, then status filter
@@ -125,29 +139,65 @@ export default function OrderManagement() {
     return acc;
   }, {} as Record<string, number>);
 
+  // Orders per agent across ALL active (non-delivered/cancelled) orders
+  const ordersByAgent = orders.reduce((acc, o) => {
+    if (o.agentId && o.status !== "delivered" && o.status !== "cancelled" && o.status !== "refunded") {
+      acc[o.agentId] = (acc[o.agentId] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
     <div className="p-6">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-white text-2xl font-black">Order Management</h1>
-          <p className="text-gray-500 text-sm mt-1">Live orders · Updates in real-time</p>
+          <p className="text-gray-500 text-sm mt-1">
+            {format(new Date(selectedDate + "T00:00:00"), "dd MMM yyyy")} · {orders.length} orders · live
+          </p>
         </div>
-        {/* Store selector */}
-        <div className="flex items-center gap-2">
-          <StoreIcon size={14} className="text-gray-500" />
-          <select
-            value={storeFilter}
-            onChange={e => setStoreFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="all">All Stores ({orders.length})</option>
-            {stores.map(s => {
-              const count = orders.filter(o => resolveStoreId(o) === s.id).length;
-              return (
-                <option key={s.id} value={s.id}>{s.name} ({count})</option>
-              );
-            })}
-          </select>
+        <div className="flex items-center gap-3">
+          {/* Date picker with quick-jump buttons */}
+          <div className="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-xl px-1 py-1">
+            <button
+              onClick={() => setSelectedDate(format(subDays(new Date(selectedDate + "T00:00:00"), 1), "yyyy-MM-dd"))}
+              className="px-2 py-1 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 text-sm font-bold"
+            >‹</button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => e.target.value && setSelectedDate(e.target.value)}
+              className="bg-transparent text-gray-300 text-sm focus:outline-none px-1"
+            />
+            <button
+              onClick={() => setSelectedDate(format(new Date(), "yyyy-MM-dd"))}
+              className="px-2 py-1 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 rounded-lg"
+            >Today</button>
+            <button
+              onClick={() => {
+                const next = new Date(selectedDate + "T00:00:00");
+                next.setDate(next.getDate() + 1);
+                if (next <= new Date()) setSelectedDate(format(next, "yyyy-MM-dd"));
+              }}
+              className="px-2 py-1 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 text-sm font-bold"
+            >›</button>
+          </div>
+
+          {/* Store selector */}
+          <div className="flex items-center gap-2">
+            <StoreIcon size={14} className="text-gray-500" />
+            <select
+              value={storeFilter}
+              onChange={e => setStoreFilter(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="all">All Stores ({orders.length})</option>
+              {stores.map(s => {
+                const count = orders.filter(o => resolveStoreId(o) === s.id).length;
+                return <option key={s.id} value={s.id}>{s.name} ({count})</option>;
+              })}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -210,19 +260,19 @@ export default function OrderManagement() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  {order.agentId
-                    ? <span className="text-blue-400 text-xs font-semibold">Assigned</span>
-                    : (
-                      <select
-                        onChange={e => e.target.value && assignAgent(order.id, e.target.value)}
-                        disabled={updating === order.id}
-                        className="bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-500"
-                      >
-                        <option value="">Assign agent</option>
-                        {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                      </select>
-                    )
-                  }
+                  <select
+                    value={order.agentId || ""}
+                    onChange={e => assignAgent(order.id, e.target.value)}
+                    disabled={assigningOrder === order.id}
+                    className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-500 max-w-[140px]"
+                  >
+                    <option value="">— Unassigned —</option>
+                    {agents.map(a => {
+                      const load = ordersByAgent[a.id] || 0;
+                      const status = a.status === "offline" ? " (offline)" : load > 0 ? ` (${load} orders)` : "";
+                      return <option key={a.id} value={a.id}>{a.name}{status}</option>;
+                    })}
+                  </select>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2 items-center">
@@ -253,6 +303,30 @@ export default function OrderManagement() {
         {loading && <div className="py-12 text-center text-gray-600 text-sm">Loading orders...</div>}
         {!loading && filtered.length === 0 && <div className="py-12 text-center text-gray-600 text-sm">No orders in this filter</div>}
       </div>
+
+      {/* Agent Load Summary */}
+      {agents.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-3">Agent Load</h2>
+          <div className="grid grid-cols-4 gap-3">
+            {agents.map(agent => {
+              const load = ordersByAgent[agent.id] || 0;
+              const statusColor = agent.status === "available" ? "text-emerald-400" : agent.status === "busy" ? "text-blue-400" : "text-gray-500";
+              const dotColor = agent.status === "available" ? "bg-emerald-500" : agent.status === "busy" ? "bg-blue-500" : "bg-gray-600";
+              return (
+                <div key={agent.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-sm font-bold truncate">{agent.name}</div>
+                    <div className={`text-xs ${statusColor}`}>{load} active order{load !== 1 ? "s" : ""}</div>
+                  </div>
+                  <div className="text-2xl font-black text-gray-600">{load}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Order Detail Modal */}
       {selectedOrder && (

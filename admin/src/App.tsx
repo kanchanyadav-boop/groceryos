@@ -10,27 +10,25 @@ import OrderManagement from "./pages/OrderManagement";
 import CreateOrder from "./pages/CreateOrder";
 import RefundManagement from "./pages/RefundManagement";
 import Billing from "./pages/Billing";
-import Dispatch from "./pages/Dispatch";
 import StoreManagement from "./pages/StoreManagement";
 import DeliverySlots from "./pages/DeliverySlots";
 import TeamManagement from "./pages/TeamManagement";
 import {
   Tag, Package, ShoppingCart, RotateCcw, IndianRupee,
-  LayoutDashboard, LogOut, Truck, Plus, Store, Clock, Users
+  LayoutDashboard, LogOut, Plus, Store, Clock, Users
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/",                label: "Dashboard",       icon: LayoutDashboard, module: "orders" },
-  { to: "/orders",          label: "Orders",          icon: ShoppingCart,    module: "orders" },
-  { to: "/create-order",    label: "Create Order",    icon: Plus,            module: "orders" },
-  { to: "/stores",          label: "Stores",          icon: Store,           module: "orders" },
-  { to: "/delivery-slots",  label: "Delivery Slots",  icon: Clock,           module: "orders" },
-  { to: "/sku",          label: "Products",      icon: Tag,             module: "sku" },
-  { to: "/inventory",    label: "Inventory",     icon: Package,         module: "inventory" },
-  { to: "/dispatch",     label: "Dispatch",      icon: Truck,           module: "dispatch" },
-  { to: "/refunds",      label: "Refunds",       icon: RotateCcw,       module: "refunds" },
-  { to: "/billing",      label: "Billing",       icon: IndianRupee,     module: "billing" },
-  { to: "/team",         label: "Team",          icon: Users,           module: "staff" },
+  { to: "/",               label: "Dashboard",      icon: LayoutDashboard, module: "orders" },
+  { to: "/orders",         label: "Orders",         icon: ShoppingCart,    module: "orders" },
+  { to: "/create-order",   label: "Create Order",   icon: Plus,            module: "orders" },
+  { to: "/stores",         label: "Stores",         icon: Store,           module: "orders" },
+  { to: "/delivery-slots", label: "Delivery Slots", icon: Clock,           module: "orders" },
+  { to: "/sku",            label: "Products",       icon: Tag,             module: "sku" },
+  { to: "/inventory",      label: "Inventory",      icon: Package,         module: "inventory" },
+  { to: "/refunds",        label: "Refunds",        icon: RotateCcw,       module: "refunds" },
+  { to: "/billing",        label: "Billing",        icon: IndianRupee,     module: "billing" },
+  { to: "/team",           label: "Team",           icon: Users,           module: "staff" },
 ];
 
 function Sidebar() {
@@ -109,7 +107,6 @@ function AppRoutes() {
           <Route path="/delivery-slots" element={<DeliverySlots />} />
           <Route path="/sku" element={<SKUManagement />} />
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/dispatch" element={<Dispatch />} />
           <Route path="/refunds" element={<RefundManagement />} />
           <Route path="/billing" element={<Billing />} />
           <Route path="/team" element={<TeamManagement />} />

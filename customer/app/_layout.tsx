@@ -6,11 +6,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../src/lib/firebase";
-import { useAuthStore, useLoaderStore } from "../src/store";
+import { useAuthStore, useAppStore, useLoaderStore } from "../src/store";
 import { COLLECTIONS } from "../src/shared/config";
 import { User } from "../src/shared/types";
 import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
+import { LightTheme, DarkTheme } from "../src/shared/theme";
 import GlobalLoader from "../src/components/GlobalLoader";
 
 // Prevent splash screen from auto-hiding immediately
@@ -27,6 +28,8 @@ Notifications.setNotificationHandler({
 
 export default function RootLayout() {
   const { setUser, clearUser } = useAuthStore();
+  const { theme } = useAppStore();
+  const colors = theme === 'light' ? LightTheme : DarkTheme;
   const { isLoading, message } = useLoaderStore();
 
   useEffect(() => {
@@ -56,11 +59,11 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" backgroundColor="#060A12" />
+      <StatusBar style={theme === 'light' ? 'dark' : 'light'} backgroundColor={colors.bg} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#060A12" },
+          contentStyle: { backgroundColor: colors.bg },
           animation: "slide_from_right",
         }}
       >

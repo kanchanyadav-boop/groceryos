@@ -1,5 +1,6 @@
 // customer/src/components/GlobalLoader.tsx
 import { View, Text, ActivityIndicator, StyleSheet, Modal } from "react-native";
+import { useTheme } from "../hooks/useTheme";
 
 interface GlobalLoaderProps {
   visible: boolean;
@@ -7,7 +8,10 @@ interface GlobalLoaderProps {
 }
 
 export default function GlobalLoader({ visible, message }: GlobalLoaderProps) {
+  const { colors } = useTheme();
   if (!visible) return null;
+
+  const styles = getStyles(colors);
 
   return (
     <Modal
@@ -26,7 +30,7 @@ export default function GlobalLoader({ visible, message }: GlobalLoaderProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.7)",
@@ -34,16 +38,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loaderContainer: {
-    backgroundColor: "#0C1220",
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 32,
     alignItems: "center",
     minWidth: 160,
     borderWidth: 1,
-    borderColor: "#1C2A3E",
+    borderColor: colors.border,
   },
   message: {
-    color: "#E8EDF8",
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 16,

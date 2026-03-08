@@ -16,61 +16,63 @@ import DrawerMenu from "../../components/DrawerMenu";
 import PincodeGate from "../../components/PincodeGate";
 import { CATEGORY_LIST } from "../../shared/categories";
 import ProductCard, { CARD_WIDTH } from "../../components/ProductCard";
+import { useTheme } from "../../hooks/useTheme";
 
-
-interface CategorySectionProps {
-  category: string;
-  products: Product[];
-}
-
-function CategorySection({ category, products }: CategorySectionProps) {
-  if (products.length === 0) return null;
-
-  return (
-    <View style={styles.categorySection}>
-      <View style={styles.categorySectionHeader}>
-        <Text style={styles.categorySectionTitle}>{category}</Text>
-        <TouchableOpacity onPress={() => router.push(`/category/${encodeURIComponent(category)}`)}>
-          <Text style={styles.seeAllText}>See All ›</Text>
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        horizontal
-        data={products}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <ProductCard product={item} horizontal />}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.horizontalList}
-      />
-    </View>
-  );
-}
-
-function SkeletonCard() {
-  return (
-    <View style={styles.skeletonCard}>
-      <View style={styles.skeletonImage} />
-      <View style={{ padding: 8, gap: 6 }}>
-        <View style={styles.skeletonLine} />
-        <View style={[styles.skeletonLine, { width: "60%" }]} />
-        <View style={[styles.skeletonLine, { width: "45%", height: 20, marginTop: 4 }]} />
-      </View>
-    </View>
-  );
-}
-
-function SkeletonSection() {
-  return (
-    <View style={styles.categorySection}>
-      <View style={[styles.skeletonLine, { width: 120, height: 18, marginHorizontal: 20, marginBottom: 12 }]} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-        {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
-      </ScrollView>
-    </View>
-  );
-}
 
 export default function ProductCatalog() {
+  const { colors, isDark } = useTheme();
+
+  // ─── Helper Components (Moved inside for style scope) ──────────────────────
+
+  function CategorySection({ category, products }: CategorySectionProps) {
+    if (products.length === 0) return null;
+
+    return (
+      <View style={styles.categorySection}>
+        <View style={styles.categorySectionHeader}>
+          <Text style={styles.categorySectionTitle}>{category}</Text>
+          <TouchableOpacity onPress={() => router.push(`/category/${encodeURIComponent(category)}`)}>
+            <Text style={styles.seeAllText}>See All ›</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          horizontal
+          data={products}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => <ProductCard product={item} horizontal />}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalList}
+        />
+      </View>
+    );
+  }
+
+  function SkeletonCard() {
+    return (
+      <View style={styles.skeletonCard}>
+        <View style={styles.skeletonImage} />
+        <View style={{ padding: 8, gap: 6 }}>
+          <View style={styles.skeletonLine} />
+          <View style={[styles.skeletonLine, { width: "60%" }]} />
+          <View style={[styles.skeletonLine, { width: "45%", height: 20, marginTop: 4 }]} />
+        </View>
+      </View>
+    );
+  }
+
+  function SkeletonSection() {
+    return (
+      <View style={styles.categorySection}>
+        <View style={[styles.skeletonLine, { width: 120, height: 18, marginHorizontal: 20, marginBottom: 12 }]} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+          {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [bestDeals, setBestDeals] = useState<Product[]>([]);
   const [productsByCategory, setProductsByCategory] = useState<Record<string, Product[]>>({});
@@ -84,6 +86,8 @@ export default function ProductCatalog() {
   const { selectedPincode, setSelectedPincode, setServiceableStoreId, serviceableStoreId } = useAppStore();
   const cartCount = getItemCount();
   const cartTotal = getTotal();
+
+  const styles = getStyles(colors);
 
   const fetchProducts = async () => {
     try {
@@ -150,9 +154,10 @@ export default function ProductCatalog() {
     }
   };
 
+  // Re-fetch whenever the serviceable store changes (pincode selection / login)
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [serviceableStoreId]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -220,11 +225,11 @@ export default function ProductCatalog() {
           value={search}
           onChangeText={setSearch}
           placeholder="Search groceries, brands..."
-          placeholderTextColor="#4E4E60"
+          placeholderTextColor={colors.textTertiary}
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch("")}>
-            <Text style={{ color: "#8A8A9A", fontSize: 18 }}>×</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 18 }}>×</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -272,7 +277,7 @@ export default function ProductCatalog() {
           <ScrollView
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2ECC71" />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.green} />
             }
             contentContainerStyle={styles.scrollContent}
           >
@@ -322,34 +327,34 @@ export default function ProductCatalog() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 },
   menuBtn: { padding: 8 },
-  menuIcon: { fontSize: 28, color: "#fff", fontWeight: "600" },
+  menuIcon: { fontSize: 28, color: colors.textPrimary, fontWeight: "600" },
   headerCenter: { flex: 1, marginLeft: 12 },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  headerSubtitle: { fontSize: 12, color: "#8A8A9A", marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: colors.green },
+  headerSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   cartBtn: { position: "relative", padding: 8 },
   cartIcon: { fontSize: 24 },
-  cartBadge: { position: "absolute", top: 4, right: 4, backgroundColor: "#2ECC71", borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" },
-  cartBadgeText: { color: "#000", fontSize: 10, fontWeight: "900" },
-  searchContainer: { flexDirection: "row", alignItems: "center", marginHorizontal: 20, marginBottom: 16, backgroundColor: "#1E2028", borderRadius: 14, paddingHorizontal: 14, height: 46, borderWidth: 1, borderColor: "#262830" },
+  cartBadge: { position: "absolute", top: 4, right: 4, backgroundColor: colors.green, borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" },
+  cartBadgeText: { color: colors.bg, fontSize: 10, fontWeight: "900" },
+  searchContainer: { flexDirection: "row", alignItems: "center", marginHorizontal: 20, marginBottom: 16, backgroundColor: colors.surfaceAlt, borderRadius: 14, paddingHorizontal: 14, height: 46, borderWidth: 1, borderColor: colors.border },
   searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, color: "#fff", fontSize: 14 },
+  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 14 },
   scrollContent: { paddingBottom: 120 },
 
   // Best Deals Section
   dealsSection: { marginBottom: 24 },
   dealsSectionHeader: { paddingHorizontal: 20, marginBottom: 12 },
-  dealsSectionTitle: { fontSize: 20, fontWeight: "900", color: "#fff", marginBottom: 4 },
-  dealsSectionSubtitle: { fontSize: 13, color: "#2ECC71", fontWeight: "600" },
+  dealsSectionTitle: { fontSize: 20, fontWeight: "900", color: colors.textPrimary, marginBottom: 4 },
+  dealsSectionSubtitle: { fontSize: 13, color: colors.green, fontWeight: "600" },
 
   // Category Section
   categorySection: { marginBottom: 24 },
   categorySectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 },
-  categorySectionTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
-  seeAllText: { fontSize: 14, color: "#2ECC71", fontWeight: "600" },
+  categorySectionTitle: { fontSize: 18, fontWeight: "900", color: colors.textPrimary },
+  seeAllText: { fontSize: 14, color: colors.green, fontWeight: "600" },
 
   // Horizontal List
   horizontalList: { paddingHorizontal: 16, gap: 12 },
@@ -358,20 +363,20 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 12, paddingBottom: 120 },
   row: { gap: 6, paddingHorizontal: 4 },
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
-  emptyText: { textAlign: "center", color: "#4E4E60", marginTop: 60, fontSize: 14 },
+  emptyText: { textAlign: "center", color: colors.textTertiary, marginTop: 60, fontSize: 14 },
 
   // Floating Cart
-  floatingCart: { position: "absolute", bottom: 24, left: 20, right: 20, backgroundColor: "#2ECC71", borderRadius: 16, paddingVertical: 14, alignItems: "center", shadowColor: "#2ECC71", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 },
-  floatingCartText: { color: "#000", fontWeight: "900", fontSize: 14, letterSpacing: 0.3 },
+  floatingCart: { position: "absolute", bottom: 24, left: 20, right: 20, backgroundColor: colors.green, borderRadius: 16, paddingVertical: 14, alignItems: "center", shadowColor: colors.green, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 },
+  floatingCartText: { color: colors.bg, fontWeight: "900", fontSize: 14, letterSpacing: 0.3 },
 
   // Category chip strip
   chipScroll: { height: 44, marginBottom: 4 },
   chipStrip: { paddingHorizontal: 16, paddingRight: 8, alignItems: "center" },
-  chip: { backgroundColor: "#1E2028", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: "#2ECC7130", marginRight: 8 },
-  chipText: { color: "#C8C8D8", fontSize: 13, fontWeight: "600" },
+  chip: { backgroundColor: colors.surfaceAlt, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: colors.greenBorder, marginRight: 8 },
+  chipText: { color: colors.textSecondary, fontSize: 13, fontWeight: "600" },
 
   // Skeleton
-  skeletonCard: { width: CARD_WIDTH, backgroundColor: "#16181F", borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "#262830" },
-  skeletonImage: { width: "100%", height: 80, backgroundColor: "#262830" },
-  skeletonLine: { height: 12, backgroundColor: "#262830", borderRadius: 6, width: "80%" },
+  skeletonCard: { width: CARD_WIDTH, backgroundColor: colors.surface, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: colors.border },
+  skeletonImage: { width: "100%", height: 80, backgroundColor: colors.surfaceAlt },
+  skeletonLine: { height: 12, backgroundColor: colors.surfaceAlt, borderRadius: 6, width: "80%" },
 });

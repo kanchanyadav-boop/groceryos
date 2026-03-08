@@ -11,8 +11,10 @@ import { cleanFirestoreData } from "../../src/lib/utils";
 import { useAuthStore, useCartStore } from "../../src/store";
 import { COLLECTIONS, APP_CONFIG } from "../../src/shared/config";
 import { router } from "expo-router";
+import { useTheme } from "../../src/hooks/useTheme";
 
 export default function ProfileTab() {
+  const { colors } = useTheme();
   const { user, firebaseUid, setUser, clearUser } = useAuthStore();
   const { clearCart } = useCartStore();
   const [editing, setEditing] = useState(false);
@@ -20,6 +22,8 @@ export default function ProfileTab() {
   const [email, setEmail] = useState(user?.email || "");
   const [saving, setSaving] = useState(false);
   const [notifications, setNotifications] = useState(true);
+
+  const styles = getStyles(colors);
 
   const handleSave = async () => {
     if (!user?.id || !name.trim()) return;
@@ -88,7 +92,7 @@ export default function ProfileTab() {
               value={name}
               onChangeText={setName}
               placeholder="Your name"
-              placeholderTextColor="#4E4E60"
+              placeholderTextColor={colors.textTertiary}
             />
             <Text style={styles.fieldLabel}>Email (optional)</Text>
             <TextInput
@@ -96,7 +100,7 @@ export default function ProfileTab() {
               value={email}
               onChangeText={setEmail}
               placeholder="your@email.com"
-              placeholderTextColor="#4E4E60"
+              placeholderTextColor={colors.textTertiary}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -105,7 +109,7 @@ export default function ProfileTab() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-                {saving ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.saveBtnText}>Save</Text>}
+                {saving ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={styles.saveBtnText}>Save</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -149,8 +153,8 @@ export default function ProfileTab() {
           <Switch
             value={notifications}
             onValueChange={setNotifications}
-            trackColor={{ false: "#262830", true: "#2ECC7150" }}
-            thumbColor={notifications ? "#2ECC71" : "#4E4E60"}
+            trackColor={{ false: colors.border, true: colors.greenDim }}
+            thumbColor={notifications ? colors.green : colors.textTertiary}
           />
         </View>
       </View>
@@ -180,34 +184,34 @@ export default function ProfileTab() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 8 },
-  title: { fontSize: 22, fontWeight: "900", color: "#fff" },
+  title: { fontSize: 22, fontWeight: "900", color: colors.textPrimary },
   avatarSection: { alignItems: "center", paddingVertical: 28 },
-  avatar: { width: 72, height: 72, backgroundColor: "#2ECC7125", borderWidth: 2, borderColor: "#2ECC71", borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  avatarText: { color: "#2ECC71", fontSize: 30, fontWeight: "900" },
-  userName: { color: "#fff", fontWeight: "900", fontSize: 20 },
-  userPhone: { color: "#8A8A9A", fontSize: 13, marginTop: 4 },
-  section: { marginHorizontal: 16, marginBottom: 16, backgroundColor: "#16181F", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#262830" },
+  avatar: { width: 72, height: 72, backgroundColor: colors.greenDim, borderWidth: 2, borderColor: colors.green, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  avatarText: { color: colors.green, fontSize: 30, fontWeight: "900" },
+  userName: { color: colors.textPrimary, fontWeight: "900", fontSize: 20 },
+  userPhone: { color: colors.textSecondary, fontSize: 13, marginTop: 4 },
+  section: { marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  sectionTitle: { color: "#7A7A8E", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
-  editLink: { color: "#2ECC71", fontSize: 13, fontWeight: "700" },
-  fieldRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#262830" },
-  fieldLabel: { color: "#8A8A9A", fontSize: 13 },
-  fieldValue: { color: "#F0F0F5", fontSize: 13, fontWeight: "600" },
+  sectionTitle: { color: colors.textTertiary, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
+  editLink: { color: colors.green, fontSize: 13, fontWeight: "700" },
+  fieldRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  fieldLabel: { color: colors.textSecondary, fontSize: 13 },
+  fieldValue: { color: colors.textPrimary, fontSize: 13, fontWeight: "600" },
   editForm: { gap: 12 },
-  input: { backgroundColor: "#1E2028", borderWidth: 1, borderColor: "#262830", borderRadius: 12, paddingHorizontal: 14, height: 48, color: "#fff", fontSize: 15 },
+  input: { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, height: 48, color: colors.textPrimary, fontSize: 15 },
   editActions: { flexDirection: "row", gap: 10, marginTop: 4 },
-  cancelBtn: { flex: 1, backgroundColor: "#262830", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  cancelBtnText: { color: "#7A7A8E", fontWeight: "700" },
-  saveBtn: { flex: 1, backgroundColor: "#2ECC71", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  saveBtnText: { color: "#000", fontWeight: "900" },
+  cancelBtn: { flex: 1, backgroundColor: colors.border, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  cancelBtnText: { color: colors.textTertiary, fontWeight: "700" },
+  saveBtn: { flex: 1, backgroundColor: colors.green, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  saveBtnText: { color: colors.bg, fontWeight: "900" },
   toggleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  toggleLabel: { color: "#F0F0F5", fontSize: 14 },
-  menuRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#262830" },
-  menuLabel: { color: "#F0F0F5", fontSize: 14 },
-  menuArrow: { color: "#4E4E60", fontSize: 16 },
-  logoutBtn: { marginHorizontal: 16, marginTop: 4, borderWidth: 1, borderColor: "#E0525230", borderRadius: 16, paddingVertical: 16, alignItems: "center", backgroundColor: "#E0525210" },
-  logoutText: { color: "#E05252", fontWeight: "700", fontSize: 15 },
+  toggleLabel: { color: colors.textPrimary, fontSize: 14 },
+  menuRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  menuLabel: { color: colors.textPrimary, fontSize: 14 },
+  menuArrow: { color: colors.textTertiary, fontSize: 16 },
+  logoutBtn: { marginHorizontal: 16, marginTop: 4, borderWidth: 1, borderColor: colors.redDim, borderRadius: 16, paddingVertical: 16, alignItems: "center", backgroundColor: colors.redDim + "10" },
+  logoutText: { color: colors.red, fontWeight: "700", fontSize: 15 },
 });

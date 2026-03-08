@@ -5,6 +5,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from "rea
 import { router } from "expo-router";
 import { useCartStore } from "../store";
 import { Product } from "../shared/types";
+import { useTheme } from "../hooks/useTheme";
 
 const { width } = Dimensions.get("window");
 export const CARD_WIDTH = width * 0.32; // used for horizontal lists
@@ -19,11 +20,14 @@ interface Props {
 }
 
 export default function ProductCard({ product, horizontal = false, badge }: Props) {
+    const { colors } = useTheme();
     const { addItem, updateQty, getItemQty } = useCartStore();
     const qty = getItemQty(product.id);
     const discount = product.mrp > product.price
         ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
         : 0;
+
+    const styles = getStyles(colors);
 
     return (
         <TouchableOpacity
@@ -99,23 +103,23 @@ export default function ProductCard({ product, horizontal = false, badge }: Prop
     );
 }
 
-export const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
     card: {
         flex: 1,
-        backgroundColor: "#16181F",
+        backgroundColor: colors.surface,
         borderRadius: 14,
         overflow: "hidden",
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: "#262830",
+        borderColor: colors.border,
     },
     imageContainer: { position: "relative" },
     image: { width: "100%", height: 90 },
-    imageFallback: { backgroundColor: "#262830", alignItems: "center", justifyContent: "center" },
+    imageFallback: { backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" },
     imageFallbackText: { fontSize: 30 },
     discountBadge: {
         position: "absolute", top: 6, left: 6,
-        backgroundColor: "#E05252", borderRadius: 5,
+        backgroundColor: colors.red, borderRadius: 5,
         paddingHorizontal: 5, paddingVertical: 2,
     },
     discountText: { color: "#fff", fontSize: 9, fontWeight: "700" },
@@ -129,36 +133,36 @@ export const styles = StyleSheet.create({
     // flex layout pins button at bottom regardless of name length
     cardBody: { flex: 1, padding: 7, justifyContent: "space-between" },
     cardTextContent: { flex: 1 },
-    productName: { color: "#F0F0F5", fontSize: 11, fontWeight: "600", lineHeight: 15 },
-    productUnit: { color: "#4E4E60", fontSize: 9, marginTop: 1 },
+    productName: { color: colors.textPrimary, fontSize: 11, fontWeight: "600", lineHeight: 15 },
+    productUnit: { color: colors.textTertiary, fontSize: 9, marginTop: 1 },
     priceRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-    price: { color: "#2ECC71", fontWeight: "900", fontSize: 13 },
-    mrp: { color: "#4E4E60", fontSize: 10, textDecorationLine: "line-through" },
+    price: { color: colors.green, fontWeight: "900", fontSize: 13 },
+    mrp: { color: colors.textTertiary, fontSize: 10, textDecorationLine: "line-through" },
 
     addBtn: {
         marginTop: 5,
-        backgroundColor: "#2ECC7120",
-        borderWidth: 1, borderColor: "#2ECC71",
+        backgroundColor: colors.greenDim,
+        borderWidth: 1, borderColor: colors.greenBorder,
         borderRadius: 7, paddingVertical: 5,
         alignItems: "center",
     },
-    addBtnText: { color: "#2ECC71", fontWeight: "700", fontSize: 11 },
+    addBtnText: { color: colors.green, fontWeight: "700", fontSize: 11 },
     addBtnDisabled: {
-        marginTop: 5, backgroundColor: "#262830",
+        marginTop: 5, backgroundColor: colors.surfaceAlt,
         borderRadius: 7, paddingVertical: 5, alignItems: "center",
     },
-    addBtnDisabledText: { color: "#4E4E60", fontWeight: "600", fontSize: 10 },
+    addBtnDisabledText: { color: colors.textTertiary, fontWeight: "600", fontSize: 10 },
     qtyControl: {
         flexDirection: "row", alignItems: "center",
         justifyContent: "space-between", marginTop: 5,
-        backgroundColor: "#2ECC71", borderRadius: 7, overflow: "hidden",
+        backgroundColor: colors.green, borderRadius: 7, overflow: "hidden",
     },
     qtyBtn: { width: 28, height: 26, alignItems: "center", justifyContent: "center" },
     qtyBtnText: { color: "#000", fontWeight: "900", fontSize: 15, lineHeight: 17 },
     qtyText: { color: "#000", fontWeight: "900", fontSize: 13 },
     orderBadge: {
         position: "absolute", top: 6, right: 6,
-        backgroundColor: "#2ECC71", borderRadius: 5,
+        backgroundColor: colors.green, borderRadius: 5,
         paddingHorizontal: 5, paddingVertical: 2,
     },
     orderBadgeText: { color: "#000", fontSize: 9, fontWeight: "800" },

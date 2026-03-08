@@ -11,6 +11,7 @@ import { Order, OrderStatus } from "../../src/shared/types";
 import { router } from "expo-router";
 import { format } from "date-fns";
 import { useAppStore } from "../../src/store";
+import { useTheme } from "../../src/hooks/useTheme";
 
 const STATUS_CONFIG: Record<OrderStatus, { color: string; emoji: string }> = {
   confirmed: { color: "#3B82F6", emoji: "✅" },
@@ -22,10 +23,13 @@ const STATUS_CONFIG: Record<OrderStatus, { color: string; emoji: string }> = {
 };
 
 export default function OrdersTab() {
+  const { colors } = useTheme();
   const { user, firebaseUid } = useAuthStore();
   const { setActiveOrderCount } = useAppStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const styles = getStyles(colors);
 
   useEffect(() => {
     // Use the stable phone-doc ID (e.g. "919876543210") to query orders.
@@ -99,7 +103,7 @@ export default function OrdersTab() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#2ECC71" style={{ marginTop: 60 }} />
+        <ActivityIndicator color={colors.green} style={{ marginTop: 60 }} />
       ) : orders.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>📦</Text>
@@ -121,27 +125,27 @@ export default function OrdersTab() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
-  title: { fontSize: 22, fontWeight: "900", color: "#fff" },
+  title: { fontSize: 22, fontWeight: "900", color: colors.textPrimary },
   list: { padding: 16, paddingBottom: 40 },
   orderCard: {
-    backgroundColor: "#16181F", borderRadius: 18, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: "#262830",
+    backgroundColor: colors.surface, borderRadius: 18, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: colors.border,
   },
   orderHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  orderId: { color: "#2ECC71", fontWeight: "700", fontSize: 14, fontFamily: "monospace" },
-  orderDate: { color: "#8A8A9A", fontSize: 11, marginTop: 2 },
-  orderAmount: { color: "#fff", fontWeight: "900", fontSize: 18 },
-  itemsSummary: { color: "#8A8A9A", fontSize: 12, marginBottom: 12 },
+  orderId: { color: colors.green, fontWeight: "700", fontSize: 14, fontFamily: "monospace" },
+  orderDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+  orderAmount: { color: colors.textPrimary, fontWeight: "900", fontSize: 18 },
+  itemsSummary: { color: colors.textSecondary, fontSize: 12, marginBottom: 12 },
   orderFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   statusPill: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 12, fontWeight: "700", textTransform: "capitalize" },
-  trackLink: { color: "#2ECC71", fontSize: 13, fontWeight: "700" },
+  trackLink: { color: colors.green, fontSize: 13, fontWeight: "700" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: 80 },
   emptyEmoji: { fontSize: 56, marginBottom: 12 },
-  emptyTitle: { color: "#8A8A9A", fontSize: 16, marginBottom: 24 },
-  shopBtn: { backgroundColor: "#2ECC71", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
-  shopBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  emptyTitle: { color: colors.textSecondary, fontSize: 16, marginBottom: 24 },
+  shopBtn: { backgroundColor: colors.green, borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
+  shopBtnText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
 });

@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { GROCERY_CATEGORIES, CATEGORY_LIST } from "../../shared/categories";
 import { useCartStore } from "../../store";
 import DrawerMenu from "../../components/DrawerMenu";
+import { useTheme } from "../../hooks/useTheme";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 60) / 2;
@@ -17,37 +18,37 @@ const CATEGORY_IMAGES: Record<string, any> = {};
 // Safely load images with try-catch to prevent crashes if images don't exist
 try {
   CATEGORY_IMAGES["Fruits & Vegetables"] = require("../../../assets/categories/fruits-vegetables.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Dairy & Bakery"] = require("../../../assets/categories/dairy-bakery.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Staples"] = require("../../../assets/categories/staples.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Snacks & Beverages"] = require("../../../assets/categories/snacks-beverages.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Packaged Food"] = require("../../../assets/categories/packaged-food.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Personal Care"] = require("../../../assets/categories/personal-care.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Household"] = require("../../../assets/categories/household.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Meat, Fish & Eggs"] = require("../../../assets/categories/meat-fish-eggs.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Frozen & Instant"] = require("../../../assets/categories/frozen-instant.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Baby Care"] = require("../../../assets/categories/baby-care.png");
-} catch (e) {}
+} catch (e) { }
 try {
   CATEGORY_IMAGES["Pet Care"] = require("../../../assets/categories/pet-care.png");
-} catch (e) {}
+} catch (e) { }
 
 // Category emojis — used as fallback when local image is missing
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -84,44 +85,51 @@ interface CategoryCardProps {
   onPress: () => void;
 }
 
-function CategoryCard({ category, onPress }: CategoryCardProps) {
-  const imageSource = CATEGORY_IMAGES[category];
-  const color = CATEGORY_COLORS[category] || "#8A8A9A";
-  const subcategories = GROCERY_CATEGORIES[category as keyof typeof GROCERY_CATEGORIES];
-
-  return (
-    <TouchableOpacity
-      style={[styles.categoryCard, { borderColor: color + "30" }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.categoryImageContainer}>
-        {imageSource ? (
-          <Image
-            source={imageSource}
-            style={styles.categoryImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.categoryImageFallback, { backgroundColor: color + "20" }]}>
-            <Text style={styles.categoryEmoji}>{CATEGORY_EMOJIS[category] || "🛒"}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.categoryName} numberOfLines={2}>
-        {category}
-      </Text>
-      <Text style={styles.subcategoryCount} numberOfLines={1}>
-        {subcategories.slice(0, 2).join(" · ")}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 export default function CategoriesScreen() {
+  const { colors } = useTheme();
+
+  // ─── Helper Component (Moved inside for style scope) ───────────────────────
+
+  function CategoryCard({ category, onPress }: CategoryCardProps) {
+    const imageSource = CATEGORY_IMAGES[category];
+    const color = CATEGORY_COLORS[category] || "#8A8A9A";
+    const subcategories = GROCERY_CATEGORIES[category as keyof typeof GROCERY_CATEGORIES];
+
+    return (
+      <TouchableOpacity
+        style={[styles.categoryCard, { borderColor: color + "30" }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.categoryImageContainer}>
+          {imageSource ? (
+            <Image
+              source={imageSource}
+              style={styles.categoryImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.categoryImageFallback, { backgroundColor: color + "20" }]}>
+              <Text style={styles.categoryEmoji}>{CATEGORY_EMOJIS[category] || "🛒"}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.categoryName} numberOfLines={2}>
+          {category}
+        </Text>
+        <Text style={styles.subcategoryCount} numberOfLines={1}>
+          {subcategories.slice(0, 2).join(" · ")}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   const [menuVisible, setMenuVisible] = useState(false);
   const { getItemCount } = useCartStore();
   const cartCount = getItemCount();
+
+  const styles = getStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -175,8 +183,8 @@ export default function CategoriesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -186,24 +194,24 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   menuBtn: { padding: 8 },
-  menuIcon: { fontSize: 28, color: "#fff", fontWeight: "600" },
+  menuIcon: { fontSize: 28, color: colors.textPrimary, fontWeight: "600" },
   headerCenter: { flex: 1, marginLeft: 12 },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  headerSubtitle: { fontSize: 12, color: "#8A8A9A", marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: colors.textPrimary },
+  headerSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   cartBtn: { position: "relative", padding: 8 },
   cartIcon: { fontSize: 24 },
   cartBadge: {
     position: "absolute",
     top: 4,
     right: 4,
-    backgroundColor: "#2ECC71",
+    backgroundColor: colors.green,
     borderRadius: 8,
     minWidth: 16,
     height: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  cartBadgeText: { color: "#000", fontSize: 10, fontWeight: "900" },
+  cartBadgeText: { color: colors.bg, fontSize: 10, fontWeight: "900" },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
   grid: {
     flexDirection: "row",
@@ -213,7 +221,7 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     width: CARD_WIDTH,
-    backgroundColor: "#16181F",
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
@@ -238,14 +246,14 @@ const styles = StyleSheet.create({
   },
   categoryEmoji: { fontSize: 32 },
   categoryName: {
-    color: "#F0F0F5",
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 4,
   },
   subcategoryCount: {
-    color: "#8A8A9A",
+    color: colors.textSecondary,
     fontSize: 11,
     textAlign: "center",
   },
@@ -254,15 +262,15 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 20,
     right: 20,
-    backgroundColor: "#2ECC71",
+    backgroundColor: colors.green,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
-    shadowColor: "#2ECC71",
+    shadowColor: colors.green,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 10,
   },
-  floatingCartText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  floatingCartText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
 });

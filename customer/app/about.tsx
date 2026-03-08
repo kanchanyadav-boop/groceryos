@@ -1,8 +1,11 @@
 // customer/app/about.tsx
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from "react-native";
 import { router } from "expo-router";
+import { useTheme } from "../src/hooks/useTheme";
 
 export default function AboutScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -38,7 +41,7 @@ export default function AboutScreen() {
         {/* Our Values */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What We Stand For</Text>
-          
+
           <View style={styles.valueCard}>
             <Text style={styles.valueIcon}>🌱</Text>
             <View style={styles.valueContent}>
@@ -110,7 +113,7 @@ export default function AboutScreen() {
         {/* Contact */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Get in Touch</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.contactCard}
             onPress={() => Linking.openURL('tel:+919999999999')}
           >
@@ -121,7 +124,7 @@ export default function AboutScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.contactCard}
             onPress={() => Linking.openURL('mailto:support@greenssupermarket.com')}
           >
@@ -150,37 +153,37 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#060A12" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: "#1C2A3E" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
-  backText: { color: "#fff", fontSize: 28 },
-  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "900" },
+  backText: { color: colors.textPrimary, fontSize: 28 },
+  headerTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: "900" },
   content: { flex: 1 },
   heroSection: { alignItems: "center", paddingVertical: 40, paddingHorizontal: 20 },
   logo: { fontSize: 64, marginBottom: 16 },
-  brandName: { color: "#fff", fontSize: 28, fontWeight: "900", marginBottom: 8 },
-  tagline: { color: "#10B981", fontSize: 14, fontWeight: "600" },
+  brandName: { color: colors.green, fontSize: 28, fontWeight: "900", marginBottom: 8 },
+  tagline: { color: colors.green, fontSize: 14, fontWeight: "600" },
   section: { padding: 20 },
-  sectionTitle: { color: "#9CA3AF", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
-  card: { backgroundColor: "#0C1220", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#1C2A3E" },
-  cardText: { color: "#9CA3AF", fontSize: 14, lineHeight: 22, marginBottom: 12 },
-  valueCard: { flexDirection: "row", backgroundColor: "#0C1220", borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#1C2A3E" },
+  sectionTitle: { color: colors.textTertiary, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
+  cardText: { color: colors.textSecondary, fontSize: 14, lineHeight: 22, marginBottom: 12 },
+  valueCard: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
   valueIcon: { fontSize: 32, marginRight: 16 },
   valueContent: { flex: 1 },
-  valueTitle: { color: "#E8EDF8", fontSize: 15, fontWeight: "700", marginBottom: 4 },
-  valueText: { color: "#9CA3AF", fontSize: 13, lineHeight: 20 },
+  valueTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 4 },
+  valueText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  statCard: { flex: 1, minWidth: "45%", backgroundColor: "#0C1220", borderRadius: 16, padding: 20, alignItems: "center", borderWidth: 1, borderColor: "#1C2A3E" },
-  statNumber: { color: "#10B981", fontSize: 28, fontWeight: "900", marginBottom: 4 },
-  statLabel: { color: "#9CA3AF", fontSize: 12, textAlign: "center" },
-  promiseCard: { backgroundColor: "#10B98120", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#10B981" },
-  promiseItem: { color: "#E8EDF8", fontSize: 14, lineHeight: 28, fontWeight: "600" },
-  contactCard: { flexDirection: "row", backgroundColor: "#0C1220", borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#1C2A3E" },
+  statCard: { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 16, padding: 20, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+  statNumber: { color: colors.green, fontSize: 28, fontWeight: "900", marginBottom: 4 },
+  statLabel: { color: colors.textSecondary, fontSize: 12, textAlign: "center" },
+  promiseCard: { backgroundColor: colors.greenDim, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.green },
+  promiseItem: { color: colors.textPrimary, fontSize: 14, lineHeight: 28, fontWeight: "600" },
+  contactCard: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
   contactIcon: { fontSize: 24, marginRight: 16 },
   contactInfo: { flex: 1 },
-  contactLabel: { color: "#9CA3AF", fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
-  contactValue: { color: "#E8EDF8", fontSize: 14, fontWeight: "600", marginTop: 4, lineHeight: 20 },
+  contactLabel: { color: colors.textTertiary, fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  contactValue: { color: colors.textPrimary, fontSize: 14, fontWeight: "600", marginTop: 4, lineHeight: 20 },
   footer: { padding: 20, alignItems: "center", paddingBottom: 40 },
-  footerText: { color: "#4B5563", fontSize: 12, lineHeight: 20 },
+  footerText: { color: colors.textSecondary, fontSize: 12, lineHeight: 20 },
 });

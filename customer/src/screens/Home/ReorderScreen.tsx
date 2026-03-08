@@ -10,6 +10,7 @@ import { db } from "../../lib/firebase";
 import { COLLECTIONS } from "../../shared/config";
 import { Order, Product, OrderItem } from "../../shared/types";
 import { useCartStore, useAuthStore, useLoaderStore } from "../../store";
+import { useTheme } from "../../hooks/useTheme";
 import { router } from "expo-router";
 import DrawerMenu from "../../components/DrawerMenu";
 import ProductCard, { CARD_WIDTH } from "../../components/ProductCard";
@@ -34,6 +35,7 @@ function ReorderCard({ product }: ReorderCardProps) {
 }
 
 export default function ReorderScreen() {
+  const { colors } = useTheme();
   const [previouslyOrdered, setPreviouslyOrdered] = useState<ProductWithFrequency[]>([]);
   const [frequentlyBought, setFrequentlyBought] = useState<ProductWithFrequency[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,6 +44,8 @@ export default function ReorderScreen() {
   const { getItemCount } = useCartStore();
   const { showLoader, hideLoader } = useLoaderStore();
   const cartCount = getItemCount();
+
+  const styles = getStyles(colors);
 
   const fetchPreviousOrders = async () => {
     if (!user?.id) {
@@ -214,7 +218,7 @@ export default function ReorderScreen() {
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.green} />
           }
         >
           <Text style={styles.emptyEmoji}>🛍️</Text>
@@ -259,7 +263,7 @@ export default function ReorderScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.green} />
         }
         contentContainerStyle={styles.scrollContent}
       >
@@ -317,8 +321,8 @@ export default function ReorderScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#060A12" },
+const getStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -328,31 +332,31 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   menuBtn: { padding: 8 },
-  menuIcon: { fontSize: 28, color: "#fff", fontWeight: "600" },
+  menuIcon: { fontSize: 28, color: colors.textPrimary, fontWeight: "600" },
   headerCenter: { flex: 1, marginLeft: 12 },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  headerSubtitle: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: colors.textPrimary },
+  headerSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   cartBtn: { position: "relative", padding: 8 },
   cartIcon: { fontSize: 24 },
   cartBadge: {
     position: "absolute",
     top: 4,
     right: 4,
-    backgroundColor: "#10B981",
+    backgroundColor: colors.green,
     borderRadius: 8,
     minWidth: 16,
     height: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  cartBadgeText: { color: "#000", fontSize: 10, fontWeight: "900" },
+  cartBadgeText: { color: colors.bg, fontSize: 10, fontWeight: "900" },
   scrollContent: { paddingBottom: 120 },
 
   // Sections
   section: { marginBottom: 24 },
   sectionHeader: { paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "900", color: "#fff", marginBottom: 4 },
-  sectionSubtitle: { fontSize: 13, color: "#6B7280" },
+  sectionTitle: { fontSize: 18, fontWeight: "900", color: colors.textPrimary, marginBottom: 4 },
+  sectionSubtitle: { fontSize: 13, color: colors.textSecondary },
 
   // Horizontal List
   horizontalList: { paddingHorizontal: 16, gap: 12 },
@@ -364,8 +368,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 10,
   },
-
-
 
   // Empty State
   emptyContainer: {
@@ -379,30 +381,30 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "900",
-    color: "#fff",
+    color: colors.textPrimary,
     marginBottom: 8,
     textAlign: "center",
   },
   emptySubtitle: {
     fontSize: 14,
-    color: "#6B7280",
+    color: colors.textSecondary,
     textAlign: "center",
     marginBottom: 24,
   },
   loginBtn: {
-    backgroundColor: "#10B981",
+    backgroundColor: colors.green,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
-  loginBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  loginBtnText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
   shopBtn: {
-    backgroundColor: "#10B981",
+    backgroundColor: colors.green,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
-  shopBtnText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  shopBtnText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
 
   // Floating Cart
   floatingCart: {
@@ -410,15 +412,15 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 20,
     right: 20,
-    backgroundColor: "#10B981",
+    backgroundColor: colors.green,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
-    shadowColor: "#10B981",
+    shadowColor: colors.green,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 10,
   },
-  floatingCartText: { color: "#000", fontWeight: "900", fontSize: 15 },
+  floatingCartText: { color: colors.bg, fontWeight: "900", fontSize: 15 },
 });

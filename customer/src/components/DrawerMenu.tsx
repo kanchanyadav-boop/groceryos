@@ -1,7 +1,8 @@
 // customer/src/components/DrawerMenu.tsx
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Linking } from "react-native";
 import { router } from "expo-router";
-import { useAuthStore } from "../store";
+import { useAuthStore, useAppStore } from "../store";
+import { useTheme } from "../hooks/useTheme";
 
 interface DrawerMenuProps {
   visible: boolean;
@@ -9,7 +10,11 @@ interface DrawerMenuProps {
 }
 
 export default function DrawerMenu({ visible, onClose }: DrawerMenuProps) {
+  const { colors, isDark, theme } = useTheme();
   const { user, clearUser } = useAuthStore();
+  const { setTheme } = useAppStore();
+
+  const styles = getStyles(colors);
 
   const menuItems = [
     { icon: "👤", label: "My Profile", route: "/(tabs)/profile" },
@@ -39,13 +44,13 @@ export default function DrawerMenu({ visible, onClose }: DrawerMenuProps) {
       animationType="slide"
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
-        style={styles.overlay} 
-        activeOpacity={1} 
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
         onPress={onClose}
       >
-        <TouchableOpacity 
-          activeOpacity={1} 
+        <TouchableOpacity
+          activeOpacity={1}
           style={styles.drawer}
           onPress={(e) => e.stopPropagation()}
         >
@@ -79,19 +84,36 @@ export default function DrawerMenu({ visible, onClose }: DrawerMenuProps) {
             {/* Contact */}
             <View style={styles.contactSection}>
               <Text style={styles.contactTitle}>Contact Us</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.contactItem}
                 onPress={() => Linking.openURL('tel:+919999999999')}
               >
                 <Text style={styles.contactIcon}>📞</Text>
                 <Text style={styles.contactText}>+91 9999 999 999</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.contactItem}
                 onPress={() => Linking.openURL('mailto:support@greenssupermarket.com')}
               >
                 <Text style={styles.contactIcon}>✉️</Text>
                 <Text style={styles.contactText}>support@greenssupermarket.com</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Theme Toggle */}
+            <View style={styles.themeSection}>
+              <Text style={styles.contactTitle}>Appearance</Text>
+              <TouchableOpacity
+                style={styles.themeToggle}
+                onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              >
+                <View style={styles.themeToggleLeft}>
+                  <Text style={styles.menuIcon}>{isDark ? "🌙" : "☀️"}</Text>
+                  <Text style={styles.menuLabel}>{isDark ? "Dark Mode" : "Light Mode"}</Text>
+                </View>
+                <View style={[styles.switchTrack, { backgroundColor: isDark ? colors.green : colors.border }]}>
+                  <View style={[styles.switchThumb, { transform: [{ translateX: isDark ? 20 : 0 }] }]} />
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -111,14 +133,14 @@ export default function DrawerMenu({ visible, onClose }: DrawerMenuProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
   drawer: {
-    backgroundColor: "#060A12",
+    backgroundColor: colors.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: "90%",
@@ -127,30 +149,30 @@ const styles = StyleSheet.create({
   header: {
     padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: "#1C2A3E",
+    borderBottomColor: colors.border,
     alignItems: "center",
   },
   avatar: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#10B981",
+    backgroundColor: colors.green,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
   avatarText: {
-    color: "#000",
+    color: colors.bg,
     fontSize: 28,
     fontWeight: "900",
   },
   userName: {
-    color: "#fff",
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: "700",
   },
   userPhone: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 13,
     marginTop: 4,
   },
@@ -169,21 +191,49 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     flex: 1,
-    color: "#E8EDF8",
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: "600",
   },
   menuArrow: {
-    color: "#4B5563",
+    color: colors.textTertiary,
     fontSize: 24,
+  },
+  themeSection: {
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  themeToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+  },
+  themeToggleLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  switchTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: "center",
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#fff",
   },
   contactSection: {
     padding: 24,
     borderTopWidth: 1,
-    borderTopColor: "#1C2A3E",
+    borderTopColor: colors.border,
   },
   contactTitle: {
-    color: "#9CA3AF",
+    color: colors.textTertiary,
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -200,7 +250,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   contactText: {
-    color: "#10B981",
+    color: colors.green,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -208,18 +258,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     marginTop: 16,
     paddingVertical: 14,
-    backgroundColor: "#1C2A3E",
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 12,
     alignItems: "center",
   },
   logoutText: {
-    color: "#EF4444",
+    color: colors.red,
     fontSize: 15,
     fontWeight: "700",
   },
   version: {
     textAlign: "center",
-    color: "#4B5563",
+    color: colors.textTertiary,
     fontSize: 11,
     marginTop: 24,
   },
