@@ -44,11 +44,29 @@ export default function PurchaseOrders() {
     const [receivingItems, setReceivingItems] = useState<POItem[]>([]);
 
     useEffect(() => {
-        loadData();
-        const unsub = onSnapshot(query(collection(db, COLLECTIONS.PURCHASE_ORDERS), orderBy("createdAt", "desc")), (snap) => {
-            setPos(snap.docs.map(d => ({ id: d.id, ...d.data() } as PurchaseOrder)));
-            setLoading(false);
-        });
+        const fetchAll = async () => {
+            try {
+                await loadData();
+            } catch (err: any) {
+                console.error("Failed to load PO metadata:", err);
+                toast.error("Failed to load vendors/stores. Check console.");
+            }
+        };
+
+        fetchAll();
+
+        const q = query(collection(db, COLLECTIONS.PURCHASE_ORDERS), orderBy("createdAt", "desc"));
+        const unsub = onSnapshot(q,
+            (snap) => {
+                setPos(snap.docs.map(d => ({ id: d.id, ...d.data() } as PurchaseOrder)));
+                setLoading(false);
+            },
+            (err) => {
+                console.error("PO Subscription Error:", err);
+                toast.error("Permission denied or missing index for Purchase Orders.");
+                setLoading(false);
+            }
+        );
         return unsub;
     }, []);
 

@@ -116,6 +116,14 @@ service cloud.firestore {
       allow write: if isAuthenticated() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
 
+    // ── Purchase Orders & Vendors: staff only ───────────────────────────────
+    match /purchaseOrders/{poId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /vendors/{vendorId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // ── Notifications: user specific ────────────────────────────────────────
     match /notifications/{notifId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
