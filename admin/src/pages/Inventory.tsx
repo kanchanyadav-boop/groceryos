@@ -1,12 +1,12 @@
 // admin/src/pages/Inventory.tsx
 import { useState, useEffect, useRef } from "react";
-import { collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp, onSnapshot, addDoc, where } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp, onSnapshot, addDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
 import { COLLECTIONS } from "../../../shared/config";
 import { InventoryItem, Product, Store } from "../../../shared/types";
-import { AlertTriangle, TrendingDown, Package, Save, Store as StoreIcon } from "lucide-react";
+import { AlertTriangle, TrendingDown, Package, Save, Store as StoreIcon, Plus, X } from "lucide-react";
 import { friendlyError } from "../lib/errors";
 
 interface InventoryRow extends InventoryItem {
@@ -114,10 +114,11 @@ export default function Inventory() {
         updateData.lastRestockedAt = new Date().toISOString();
       }
 
-      await updateDoc(doc(db, COLLECTIONS.INVENTORY, row.docId), updateData);
-
-      // Detailed Log entry
-      await addDoc(collection(db, COLLECTIONS.INVENTORY_LOGS), {
+      // Atomic: update inventory + write audit log in one batch
+      const batch = writeBatch(db);
+      batch.update(doc(db, COLLECTIONS.INVENTORY, row.docId), updateData);
+      const logRef = doc(collection(db, COLLECTIONS.INVENTORY_LOGS));
+      batch.set(logRef, {
         skuId: row.skuId,
         storeId: row.storeId,
         productName: row.productName,
@@ -131,6 +132,7 @@ export default function Inventory() {
         updatedBy: staffProfile?.name || "admin",
         createdAt: serverTimestamp(),
       });
+      await batch.commit();
 
       // Update product global inStock
       const allInvSnap = await getDocs(query(collection(db, COLLECTIONS.INVENTORY), where("skuId", "==", row.skuId)));

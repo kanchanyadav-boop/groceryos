@@ -182,7 +182,21 @@ export default function SKUManagement() {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const rows = results.data as any[];
+        const allRows = results.data as any[];
+        // Validate rows: skip any without a name or a valid positive price
+        const rows = allRows.filter((row: any) =>
+          row.name?.trim() && parseFloat(row.price) > 0
+        );
+        const skippedCount = allRows.length - rows.length;
+        if (skippedCount > 0) {
+          toast.error(`${skippedCount} row(s) skipped — missing name or invalid price`);
+        }
+        if (rows.length === 0) {
+          toast.dismiss();
+          toast.error("No valid rows to import. Check your CSV columns: name, price are required.");
+          if (csvInputRef.current) csvInputRef.current.value = "";
+          return;
+        }
         const toastId = toast.loading(`Importing ${rows.length} products...`);
         let success = 0, failed = 0;
 

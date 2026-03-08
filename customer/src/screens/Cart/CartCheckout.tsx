@@ -74,6 +74,11 @@ export default function CartCheckout() {
     [slotConfig.advanceDays]
   );
 
+  const availableSlotsForSelectedDate = useMemo(
+    () => getAvailableSlotsForDate(selectedDate, slotConfig),
+    [selectedDate, slotConfig]
+  );
+
   const placeOrder = async () => {
     // Check if user is logged in
     if (!user || !firebaseUid) {
@@ -143,6 +148,20 @@ export default function CartCheckout() {
         );
         setLoading(false);
         return;
+      }
+
+      // ── Validate inventory availability for all cart items ────────────────
+      for (const item of items) {
+        const invDoc = await getDoc(doc(db, "inventory", `${serviceableStoreId}_${item.skuId}`));
+        if (!invDoc.exists() || (invDoc.data().available ?? 0) < item.qty) {
+          Alert.alert(
+            "Item unavailable",
+            `Sorry, "${item.name}" is no longer available in the quantity you selected. Please update your cart.`,
+            [{ text: "OK" }]
+          );
+          setLoading(false);
+          return;
+        }
       }
 
       // ── Write order directly to Firestore ─────────────────────────────────
@@ -341,7 +360,7 @@ export default function CartCheckout() {
           ))}
         </ScrollView>
         {(() => {
-          const available = getAvailableSlotsForDate(selectedDate, slotConfig);
+          const available = availableSlotsForSelectedDate;
           if (available.length === 0) {
             return (
               <View style={styles.noSlotsBox}>
@@ -450,9 +469,9 @@ export default function CartCheckout() {
       {/* Place Order */}
       <View style={styles.placeSection}>
         <TouchableOpacity
-          style={[styles.placeBtn, loading && styles.placeBtnDisabled]}
+          style={[styles.placeBtn, (loading || availableSlotsForSelectedDate.length === 0) && styles.placeBtnDisabled]}
           onPress={placeOrder}
-          disabled={loading}
+          disabled={loading || availableSlotsForSelectedDate.length === 0}
         >
           {loading
             ? <ActivityIndicator color={colors.bg} />

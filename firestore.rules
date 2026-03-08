@@ -8,126 +8,119 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserRole() {
-      return request.auth.token.role;
-    }
-
-    function isAdmin() {
-      return isAuthenticated() && getUserRole() == 'admin';
-    }
-
-    function isStaff() {
-      return isAuthenticated() && getUserRole() in ['admin', 'inventory_manager', 'dispatcher', 'billing', 'support'];
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isStaffMember() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
 
     // ── Products: public read, staff write ──────────────────────────────────
     match /products/{skuId} {
-      allow read: if true; // Public catalog
-      allow write: if isAuthenticated(); // Temporarily allow any authenticated user
+      allow read: if true;
+      allow write: if isStaffMember();
     }
 
-    // ── Inventory: staff only ───────────────────────────────────────────────
-    match /inventory/{skuId} {
-      allow read: if isAuthenticated(); // Temporarily allow any authenticated user
-      allow write: if isAuthenticated(); // Temporarily allow any authenticated user
-    }
-
-    // ── Orders: customer owns theirs, staff can read all ────────────────────
-    match /orders/{orderId} {
-      allow read: if isAuthenticated(); // Temporarily allow any authenticated user
-      allow create: if isAuthenticated(); // Cloud Function handles actual creation
-      allow update: if isAuthenticated(); // Temporarily allow any authenticated user
-    }
-
-    // ── Users: own data only ────────────────────────────────────────────────
-    match /users/{userId} {
-      allow read: if true; // Allow reading for phone number lookup during login (demo mode)
-      allow create: if true; // Allow user creation during signup (demo mode)
-      allow update, delete: if true; // Allow updates during login (demo mode)
-    }
-
-    // ── Agents: own data + staff ────────────────────────────────────────────
-    match /agents/{agentId} {
+    // ── Inventory: authenticated read, staff write ──────────────────────────
+    match /inventory/{docId} {
       allow read: if isAuthenticated();
-      // Staff members (anyone with a staff doc) can manage agents.
-      // isAdmin() uses custom claims which are not set; check Firestore staff doc instead.
-      allow write: if isAuthenticated() && (
-        isOwner(agentId) ||
-        exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+      allow write: if isStaffMember();
+    }
+
+    // ── Orders: customer creates/reads own; staff reads/updates all ─────────
+    match /orders/{orderId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffMember()
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffMember()
       );
     }
 
-    // ── Payments: own + billing staff ───────────────────────────────────────
+    // ── Users: authenticated read (for admin phone lookup), owner/staff write
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || isStaffMember()
+      );
+      allow delete: if isStaffMember();
+    }
+
+    // ── Agents: authenticated read, agent-owner or staff write ─────────────
+    match /agents/{agentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        request.auth.uid == agentId || isStaffMember()
+      );
+    }
+
+    // ── Payments: owner read, Cloud Functions write only ───────────────────
     match /payments/{paymentId} {
-      allow read: if isAuthenticated(); // Temporarily allow any authenticated user
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffMember()
+      );
       allow write: if false; // Cloud Functions only
     }
 
-    // ── Refunds: own + billing staff ────────────────────────────────────────
+    // ── Refunds: owner creates, staff or owner reads, staff updates ─────────
     match /refunds/{refundId} {
-      allow read: if isAuthenticated(); // Temporarily allow any authenticated user
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffMember()
+      );
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated(); // Temporarily allow any authenticated user
+      allow update: if isStaffMember();
     }
 
-    // ── Staff: admin only ───────────────────────────────────────────────────
+    // ── Staff: any staff reads own doc; admin manages others ────────────────
     match /staff/{staffId} {
-      allow read: if isAuthenticated(); // Allow any authenticated user to read their own staff doc
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isStaffMember();
     }
 
-    // ── Categories: public read, admin write ────────────────────────────────
+    // ── Categories: public read, staff write ────────────────────────────────
     match /categories/{catId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isStaffMember();
     }
 
-    // ── Delivery slots: authenticated read, staff write ─────────────────────
-    match /deliverySlots/{date} {
+    // ── Settings (delivery slots etc): authenticated read, staff write ──────
+    match /settings/{settingId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+      allow write: if isStaffMember();
     }
 
-    // ── Inventory logs: staff read ──────────────────────────────────────────
+    // ── Inventory logs: staff read, authenticated create, no update/delete ──
     match /inventoryLogs/{logId} {
-      allow read: if isAuthenticated(); // Temporarily allow any authenticated user
-      allow create: if isAuthenticated(); // Temporarily allow any authenticated user
+      allow read: if isStaffMember();
+      allow create: if isStaffMember();
       allow update, delete: if false;
     }
 
-    // ── Chats: participants only ────────────────────────────────────────────
+    // ── Chats: authenticated participants only ──────────────────────────────
     match /chats/{orderId}/messages/{msgId} {
-      allow read, write: if isAuthenticated(); // Restrict to order participants in production
+      allow read, write: if isAuthenticated();
     }
 
     // ── Stores: public read, staff write ────────────────────────────────────
     match /stores/{storeId} {
-      allow read: if true; // Public for pincode checks
-      allow write: if isAuthenticated(); // Staff only in production
-    }
-
-    // ── Settings: staff only ────────────────────────────────────────────────
-    match /settings/{settingId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+      allow read: if true;
+      allow write: if isStaffMember();
     }
 
     // ── Purchase Orders & Vendors: staff only ───────────────────────────────
     match /purchaseOrders/{poId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaffMember();
     }
     match /vendors/{vendorId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isStaffMember();
     }
 
-    // ── Notifications: user specific ────────────────────────────────────────
+    // ── Notifications: owner read, staff write ──────────────────────────────
     match /notifications/{notifId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow write: if isAdmin();
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffMember()
+      );
+      allow write: if isStaffMember();
     }
   }
 }

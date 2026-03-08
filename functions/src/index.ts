@@ -327,24 +327,56 @@ export const placeOrder = functions.https.onCall(async (data, context) => {
 
     // For online payments, create Razorpay order
     if (paymentMethod !== "cod") {
-      const Razorpay = require("razorpay");
-      const razorpay = new Razorpay({
-        key_id: functions.config().razorpay.key_id,
-        key_secret: functions.config().razorpay.key_secret,
-      });
+      try {
+        const Razorpay = require("razorpay");
+        const razorpay = new Razorpay({
+          key_id: functions.config().razorpay.key_id,
+          key_secret: functions.config().razorpay.key_secret,
+        });
 
-      const rzpOrder = await razorpay.orders.create({
-        amount: result.totalAmount * 100, // paise
-        currency: "INR",
-        receipt: result.orderId,
-        notes: { orderId: result.orderId, userId },
-      });
+        const rzpOrder = await razorpay.orders.create({
+          amount: result.totalAmount * 100, // paise
+          currency: "INR",
+          receipt: result.orderId,
+          notes: { orderId: result.orderId, userId },
+        });
 
-      await db.collection("orders").doc(result.orderId).update({
-        razorpayOrderId: rzpOrder.id,
-      });
+        await db.collection("orders").doc(result.orderId).update({
+          razorpayOrderId: rzpOrder.id,
+        });
 
-      return { ...result, razorpayOrderId: rzpOrder.id };
+        return { ...result, razorpayOrderId: rzpOrder.id };
+      } catch (rzpErr: any) {
+        // Razorpay order creation failed — release the reserved inventory and cancel the order
+        functions.logger.error("Razorpay order creation failed, releasing inventory", { orderId: result.orderId, err: rzpErr.message });
+        try {
+          const orderDoc = await db.collection("orders").doc(result.orderId).get();
+          const orderItems: any[] = orderDoc.data()?.items || [];
+          const releasePromises = orderItems.map((item: any) =>
+            db.collection("inventory").doc(`${assignedStoreId}_${item.skuId}`).update({
+              reserved: admin.firestore.FieldValue.increment(-item.qty),
+              available: admin.firestore.FieldValue.increment(item.qty),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            })
+          );
+          await Promise.all([
+            ...releasePromises,
+            db.collection("orders").doc(result.orderId).update({
+              status: "cancelled",
+              statusHistory: admin.firestore.FieldValue.arrayUnion({
+                status: "cancelled",
+                timestamp: new Date().toISOString(),
+                updatedBy: "system",
+                note: "Payment gateway error — inventory released",
+              }),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }),
+          ]);
+        } catch (releaseErr) {
+          functions.logger.error("Failed to release inventory after Razorpay failure", releaseErr);
+        }
+        throw new functions.https.HttpsError("internal", "Payment gateway error. Please try again.");
+      }
     }
 
     // FCM notification to customer
@@ -569,7 +601,8 @@ export const onInventoryUpdate = functions.firestore
     const before = change.before.data();
 
     // Only alert when crossing the threshold downward
-    if (before.available > after.lowStockThreshold && after.available <= after.lowStockThreshold) {
+    const threshold = after.lowStockThreshold ?? before.lowStockThreshold;
+    if (threshold != null && before.available > threshold && after.available <= threshold) {
       // skuId is stored as a field in the document (doc ID is "{storeId}_{skuId}")
       const skuId: string = after.skuId || change.after.id;
       const productDoc = await db.collection("products").doc(skuId).get();

@@ -149,6 +149,7 @@ export interface Refund {
   status: RefundStatus;
   razorpayRefundId?: string;
   approvedBy?: string;
+  rejectionReason?: string;
   createdAt: string;
   processedAt?: string;
 }
@@ -187,10 +188,26 @@ export interface Store {
   updatedAt: string;
 }
 
+/** @deprecated Use SlotConfig + DeliverySlotsConfig instead */
 export interface DeliverySlotConfig {
   date: string;
   AM: { capacity: number; booked: number; cutoffTime: string };
   PM: { capacity: number; booked: number; cutoffTime: string };
+}
+
+export interface SlotConfig {
+  id: string;
+  name: string;
+  emoji: string;
+  timeRange: string;
+  cutoffHour: number;
+  capacityPerDay: number;
+  isActive: boolean;
+}
+
+export interface DeliverySlotsConfig {
+  slots: SlotConfig[];
+  advanceDays: number;
 }
 
 export interface Category {

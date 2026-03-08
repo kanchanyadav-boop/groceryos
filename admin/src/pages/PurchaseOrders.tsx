@@ -435,10 +435,15 @@ export default function PurchaseOrders() {
                                             <td className="py-5 px-4 text-center">
                                                 <input
                                                     type="number"
+                                                    min={0}
+                                                    max={item.orderedQty}
                                                     value={item.receivedQty}
                                                     onChange={(e) => {
                                                         const items = [...receivingItems];
-                                                        items[idx].receivedQty = parseInt(e.target.value) || 0;
+                                                        items[idx].receivedQty = Math.min(
+                                                            Math.max(0, parseInt(e.target.value) || 0),
+                                                            item.orderedQty
+                                                        );
                                                         setReceivingItems(items);
                                                     }}
                                                     className={`w-full bg-gray-800 border rounded-xl py-2 px-3 text-center text-white focus:ring-1 ${isMatching ? "border-gray-700" : "border-orange-500"}`}
