@@ -18,25 +18,25 @@ import {
 type Tab = "staff" | "agents";
 
 const ROLES: { value: UserRole; label: string; description: string }[] = [
-  { value: "admin",             label: "Admin",             description: "Full access to all modules" },
+  { value: "admin", label: "Admin", description: "Full access to all modules" },
   { value: "inventory_manager", label: "Inventory Manager", description: "Products & inventory management" },
-  { value: "dispatcher",        label: "Dispatcher",        description: "Orders & delivery dispatch" },
-  { value: "billing",           label: "Billing",           description: "Payments, refunds & reports" },
-  { value: "support",           label: "Support",           description: "View orders only" },
+  { value: "dispatcher", label: "Dispatcher", description: "Orders & delivery dispatch" },
+  { value: "billing", label: "Billing", description: "Payments, refunds & reports" },
+  { value: "support", label: "Support", description: "View orders only" },
 ];
 
 const ROLE_BADGE: Record<UserRole, string> = {
-  admin:             "bg-purple-500/15 text-purple-400 border-purple-500/30",
+  admin: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   inventory_manager: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  dispatcher:        "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  billing:           "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  support:           "bg-gray-500/15 text-gray-400 border-gray-500/30",
+  dispatcher: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  billing: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  support: "bg-gray-500/15 text-gray-400 border-gray-500/30",
 };
 
 const AGENT_STATUS_BADGE: Record<string, string> = {
   available: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  busy:      "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  offline:   "bg-gray-500/15 text-gray-400 border-gray-500/30",
+  busy: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  offline: "bg-gray-500/15 text-gray-400 border-gray-500/30",
 };
 
 export default function TeamManagement() {
@@ -162,7 +162,7 @@ export default function TeamManagement() {
     setEditingAgent(agent);
     setAgentForm({
       name: agent.name,
-      phone: agent.phone,
+      phone: agent.phone.replace(/^\+91/, ""),
       vehicleNumber: agent.vehicleNumber,
       storeId: agent.storeId || "",
     });
@@ -252,17 +252,15 @@ export default function TeamManagement() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setTab("staff")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-            tab === "staff" ? "bg-emerald-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${tab === "staff" ? "bg-emerald-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+            }`}
         >
           <Users size={15} /> Staff ({staff.length})
         </button>
         <button
           onClick={() => setTab("agents")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-            tab === "agents" ? "bg-emerald-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${tab === "agents" ? "bg-emerald-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+            }`}
         >
           <Bike size={15} /> Agents ({agents.length})
         </button>

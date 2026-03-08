@@ -51,4 +51,6 @@ export const COLLECTIONS = {
   NOTIFICATIONS: "notifications",
   INVENTORY_LOGS: "inventoryLogs",
   SETTINGS: "settings",
+  VENDORS: "vendors",
+  PURCHASE_ORDERS: "purchaseOrders",
 };

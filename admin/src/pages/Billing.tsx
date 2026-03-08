@@ -4,7 +4,9 @@ import { collection, query, where, orderBy, getDocs, Timestamp } from "firebase/
 import { db } from "../lib/firebase";
 import { Payment, Order } from "../../shared/types";
 import { COLLECTIONS, APP_CONFIG } from "../../shared/config";
-import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import {
+  format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth
+} from "date-fns";
 import { toDate, fmtDate } from "../lib/utils";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import jsPDF from "jspdf";
@@ -25,7 +27,7 @@ export default function Billing() {
     const now = new Date();
     switch (range) {
       case "today": return { from: startOfDay(now), to: endOfDay(now) };
-      case "week":  return { from: startOfWeek(now), to: endOfWeek(now) };
+      case "week": return { from: startOfDay(subDays(now, 6)), to: endOfDay(now) }; // Last 7 Days (including today)
       case "month": return { from: startOfMonth(now), to: endOfMonth(now) };
     }
   };
@@ -122,18 +124,18 @@ export default function Billing() {
       headStyles: { fillColor: [16, 185, 129] },
     });
 
-    // Transactions
-    pdf.text("Transaction Details", 14, (pdf as any).lastAutoTable.finalY + 14);
+    // Transactions - List Orders instead of Payments to include COD
+    pdf.text("Recent Orders / Transactions", 14, (pdf as any).lastAutoTable.finalY + 14);
     autoTable(pdf, {
       startY: (pdf as any).lastAutoTable.finalY + 18,
-      head: [["Payment ID", "Order ID", "Amount", "Method", "Status", "Date"]],
-      body: payments.slice(0, 50).map(p => [
-        p.id.slice(-8).toUpperCase(),
-        p.orderId?.slice(-6).toUpperCase() || "—",
-        `₹${p.amount}`,
-        p.method.toUpperCase(),
-        p.status,
-        fmtDate(p.createdAt, "dd/MM/yy"),
+      head: [["Order ID", "Payment ID", "Amount", "Method", "Status", "Date"]],
+      body: orders.slice(0, 100).map(o => [
+        o.id.slice(-8).toUpperCase(),
+        o.paymentId?.slice(-8).toUpperCase() || "COD",
+        `₹${o.totalAmount}`,
+        o.paymentMethod.toUpperCase(),
+        o.status.toUpperCase(),
+        fmtDate(o.createdAt, "dd/MM/yy"),
       ]),
       headStyles: { fillColor: [59, 130, 246] },
       styles: { fontSize: 8 },
@@ -144,10 +146,10 @@ export default function Billing() {
   };
 
   const exportCSV = () => {
-    const data = payments.map(p => ({
-      "Payment ID": p.id, "Order ID": p.orderId, "Amount": p.amount,
-      "Method": p.method, "Status": p.status,
-      "Date": fmtDate(p.createdAt, "dd/MM/yyyy", ""),
+    const data = orders.map(o => ({
+      "Order ID": o.id, "Payment ID": o.paymentId || "COD", "Amount": o.totalAmount,
+      "Method": o.paymentMethod, "Status": o.status,
+      "Date": fmtDate(o.createdAt, "dd/MM/yyyy", ""),
     }));
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: "text/csv" });
@@ -177,10 +179,13 @@ export default function Billing() {
 
       {/* Range selector */}
       <div className="flex gap-2 mb-6">
-        {(["today", "week", "month"] as DateRange[]).map(r => (
-          <button key={r} onClick={() => setRange(r)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition-colors ${range === r ? "bg-emerald-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
-            {r === "today" ? "Today" : r === "week" ? "This Week" : "This Month"}
+        {(["today", "week", "month"] as const).map(r => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition-all ${range === r ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+          >
+            {r === "today" ? "Today" : r === "week" ? "Last 7 Days" : "This Month"}
           </button>
         ))}
       </div>
@@ -238,25 +243,27 @@ export default function Billing() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-800">
-              {["Payment ID", "Order ID", "Amount", "Method", "Status", "Date"].map(h => (
+              {["Order ID", "Payment ID", "Amount", "Method", "Status", "Date"].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {payments.map((p, i) => (
-              <tr key={p.id} className={`border-b border-gray-800/50 ${i % 2 === 0 ? "" : "bg-gray-900/50"}`}>
-                <td className="px-4 py-3 text-emerald-400 text-xs font-mono">{p.id.slice(-10).toUpperCase()}</td>
-                <td className="px-4 py-3 text-gray-400 text-xs font-mono">#{p.orderId?.slice(-6).toUpperCase()}</td>
-                <td className="px-4 py-3 text-white font-bold text-sm">₹{p.amount}</td>
-                <td className="px-4 py-3 text-gray-400 text-sm uppercase">{p.method}</td>
+            {orders.map((o, i) => (
+              <tr key={o.id} className={`border-b border-gray-800/50 ${i % 2 === 0 ? "" : "bg-gray-900/50"}`}>
+                <td className="px-4 py-3 text-emerald-400 text-xs font-mono">#{o.id.slice(-8).toUpperCase()}</td>
+                <td className="px-4 py-3 text-gray-400 text-xs font-mono">
+                  {o.paymentId ? o.paymentId.slice(-10).toUpperCase() : <span className="text-gray-600">COD</span>}
+                </td>
+                <td className="px-4 py-3 text-white font-bold text-sm">₹{o.totalAmount}</td>
+                <td className="px-4 py-3 text-gray-400 text-sm uppercase">{o.paymentMethod}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${p.status === "captured" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
-                    {p.status}
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${["delivered", "dispatched"].includes(o.status) ? "bg-emerald-500/15 text-emerald-400" : o.status === "cancelled" ? "bg-red-500/15 text-red-400" : "bg-blue-500/15 text-blue-400"}`}>
+                    {o.status}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500 text-xs">
-                  {fmtDate(p.createdAt, "dd MMM, hh:mm a")}
+                  {fmtDate(o.createdAt, "dd MMM, hh:mm a")}
                 </td>
               </tr>
             ))}

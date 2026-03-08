@@ -52,6 +52,8 @@ export interface InventoryItem {
   reserved: number;       // qty reserved for pending orders
   available: number;      // quantity - reserved
   lowStockThreshold: number;
+  expiryDate?: string;    // ISO date string
+  batchNumber?: string;
   lastRestockedAt?: string;
   updatedBy: string;
   updatedAt: string;
@@ -198,4 +200,47 @@ export interface Category {
   imageUrl?: string;
   subcategories: { id: string; name: string; slug: string }[];
   sortOrder: number;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  categories: string[]; // categories they supply
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type POStatus = "draft" | "pending" | "partially_received" | "received" | "cancelled";
+
+export interface POItem {
+  skuId: string;
+  productName: string;
+  unit: string;
+  orderedQty: number;
+  receivedQty: number;
+  unitCost: number; // For COGS tracking
+  expiryDate?: string;
+  batchNumber?: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string; // e.g., PO-2024-001
+  vendorId: string;
+  storeId: string; // which store is receiving the goods
+  items: POItem[];
+  status: POStatus;
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  notes?: string;
+  expectedDeliveryDate?: string;
+  receivedAt?: string;
+  receivedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
